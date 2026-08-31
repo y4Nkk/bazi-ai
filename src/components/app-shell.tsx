@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { BrandMark } from "./brand-mark";
 
 /**
  * App shell: translucent header with one primary action (the birth form
@@ -38,9 +39,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <header className="sticky top-0 z-sticky border-b border-bazi-border bg-bazi-surface-glass backdrop-blur-sm">
         <div className="mx-auto flex max-w-[1440px] items-center gap-4 px-4 py-3 sm:px-6">
-          <p className="text-title-sm font-semibold tracking-tight text-bazi-ink">
+          <p className="flex items-center gap-2 text-title-sm font-semibold tracking-tight text-bazi-ink">
+            <BrandMark className="size-8 text-bazi-primary" />
             命轨
-            <span className="ml-2 font-normal text-bazi-ink-muted">Bazi AI</span>
+            <span className="ml-1 font-normal text-bazi-ink-muted">Bazi AI</span>
           </p>
           <p className="hidden text-meta text-bazi-ink-muted sm:block">八字趋势工作台</p>
           <button
