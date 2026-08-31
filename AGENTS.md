@@ -16,7 +16,7 @@ Do not add accounts, sharing, a database, payments, background jobs, a social fe
 
 ## Required reading
 
-Before editing UI, read DESIGN.md. It is the visual source of truth derived from SpiralCoder. The archived Apple reference at docs/reference/getdesign-apple.md is inspiration only and must not override DESIGN.md.
+Before editing UI, read DESIGN.md, src/styles/tokens.css, tailwind.config.cjs, and src/lib/typography.ts. Together they are the visual source of truth migrated from SpiralCoder. The archived Apple reference at docs/reference/getdesign-apple.md is inspiration only and must not override them.
 
 Before changing product behavior, read SPEC.md and MEMORY.md. Update MEMORY.md only after a decision is implemented and verified.
 
@@ -27,7 +27,7 @@ Before changing product behavior, read SPEC.md and MEMORY.md. Update MEMORY.md o
 - src/ai owns provider selection, prompts, output schema, and model invocation.
 - src/app/api only validates HTTP input and orchestrates the domain and AI layers.
 - src/components renders UI only. It must not recalculate chart facts or score candles.
-- src/styles/tokens.css is the only owner of visual tokens. Components consume semantic tokens; they do not introduce raw colors, arbitrary radii, or parallel theme variables.
+- src/styles/tokens.css is the only owner of visual tokens. tailwind.config.cjs maps those tokens to semantic utilities, and src/lib/typography.ts owns reusable text class compositions. Components consume these owners; they do not introduce raw colors, arbitrary radii, or parallel theme variables.
 
 Each domain contract has one owner. Do not retain deprecated fields, fallback calculations, dual time standards, duplicated scores, or provider-specific behavior outside src/ai.
 
