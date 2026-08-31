@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { Button, Field, Segmented, inputClass } from "./controls";
+import { Button, Checkbox, Field, Input, Segmented, Select } from "./controls";
+import { PlaceInput } from "./place-input";
 import { TEXT } from "@/lib/typography";
+import type { Place } from "@/lib/places";
 import type { ChartSnapshot } from "@/domain/fortune/types";
 
 export interface BirthFormState {
@@ -16,24 +18,43 @@ export interface BirthFormState {
   timeStandard: "civil" | "trueSolar";
 }
 
-const TIMEZONE_OPTIONS = [
+/** Curated IANA zones; must stay a superset of every PLACES timezone. */
+export const TIMEZONE_OPTIONS = [
   "Asia/Shanghai",
   "Asia/Hong_Kong",
+  "Asia/Macau",
   "Asia/Taipei",
   "Asia/Tokyo",
+  "Asia/Seoul",
   "Asia/Singapore",
+  "Asia/Kuala_Lumpur",
   "Asia/Bangkok",
+  "Asia/Ho_Chi_Minh",
+  "Asia/Manila",
+  "Asia/Jakarta",
   "Asia/Kolkata",
   "Asia/Dubai",
+  "Europe/Istanbul",
+  "Europe/Moscow",
   "Europe/London",
   "Europe/Paris",
   "Europe/Berlin",
-  "Europe/Moscow",
+  "Europe/Rome",
+  "Europe/Madrid",
+  "Europe/Amsterdam",
+  "Europe/Zurich",
+  "Europe/Stockholm",
+  "Africa/Cairo",
   "America/New_York",
+  "America/Toronto",
   "America/Chicago",
   "America/Los_Angeles",
+  "America/Vancouver",
   "America/Sao_Paulo",
+  "Pacific/Honolulu",
   "Australia/Sydney",
+  "Australia/Melbourne",
+  "Australia/Brisbane",
   "Pacific/Auckland",
   "UTC",
 ];
@@ -41,6 +62,7 @@ const TIMEZONE_OPTIONS = [
 export function BirthForm({
   formState,
   onFieldChange,
+  onPlaceSelect,
   onSubmit,
   loading,
   snapshot,
@@ -49,6 +71,7 @@ export function BirthForm({
 }: {
   formState: BirthFormState;
   onFieldChange: (field: keyof BirthFormState, value: string) => void;
+  onPlaceSelect: (place: Place) => void;
   onSubmit: () => void;
   loading: boolean;
   snapshot: ChartSnapshot | null;
@@ -81,7 +104,7 @@ export function BirthForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="出生日期" htmlFor="birth-date">
-          <input
+          <Input
             id="birth-date"
             type="date"
             required
@@ -89,18 +112,16 @@ export function BirthForm({
             max="2100-12-31"
             value={formState.localDate}
             onChange={(event) => onFieldChange("localDate", event.target.value)}
-            className={inputClass}
           />
         </Field>
         <Field label="出生时刻（当地钟表时间）" htmlFor="birth-time">
-          <input
+          <Input
             id="birth-time"
             type="time"
             required
             step={60}
             value={formState.localTime}
             onChange={(event) => onFieldChange("localTime", event.target.value)}
-            className={inputClass}
           />
         </Field>
       </div>
@@ -117,59 +138,54 @@ export function BirthForm({
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Field label="出生地（显示名称）" htmlFor="birthplace">
-          <input
+        <Field
+          label="出生地（显示名称）"
+          helper="输入名称搜索，选中后自动填写经纬度与时区。"
+          htmlFor="birthplace"
+        >
+          <PlaceInput
             id="birthplace"
-            type="text"
-            required
-            maxLength={60}
-            placeholder="如：上海"
+            placeholder="如：南宁、上海、东京"
             value={formState.birthplace}
-            onChange={(event) => onFieldChange("birthplace", event.target.value)}
-            className={inputClass}
+            onChangeText={(text) => onFieldChange("birthplace", text)}
+            onPlaceSelect={onPlaceSelect}
           />
         </Field>
         <Field label="时区" htmlFor="timezone">
-          <select
+          <Select
             id="timezone"
             value={formState.timezone}
-            onChange={(event) => onFieldChange("timezone", event.target.value)}
-            className={inputClass}
-          >
-            {TIMEZONE_OPTIONS.map((zone) => (
-              <option key={zone} value={zone}>
-                {zone}
-              </option>
-            ))}
-          </select>
+            onValueChange={(value) => onFieldChange("timezone", value)}
+            options={TIMEZONE_OPTIONS.map((zone) => ({ value: zone, label: zone }))}
+          />
         </Field>
         <Field label="经度（东经为正）" htmlFor="longitude">
-          <input
+          <Input
             id="longitude"
             type="number"
             required
             step={0.01}
             min={-180}
             max={180}
+            placeholder="如：108.32"
             value={formState.longitude}
             onChange={(event) => onFieldChange("longitude", event.target.value)}
-            className={inputClass}
           />
         </Field>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="纬度（北纬为正）" htmlFor="latitude">
-          <input
+          <Input
             id="latitude"
             type="number"
             required
             step={0.01}
             min={-90}
             max={90}
+            placeholder="如：22.82"
             value={formState.latitude}
             onChange={(event) => onFieldChange("latitude", event.target.value)}
-            className={inputClass}
           />
         </Field>
         <Segmented
@@ -202,15 +218,14 @@ export function BirthForm({
           <p className={`${TEXT.caption} mt-1`}>
             两种候选四柱不同，请确认后按所选标准继续；确认前无法请求 AI 解读。
           </p>
-          <label className={`${TEXT.bodySm} mt-3 flex min-h-touch items-center gap-2`}>
-            <input
-              type="checkbox"
-              checked={boundaryAcknowledged}
-              onChange={(event) => onBoundaryAckChange(event.target.checked)}
-              className="size-6 accent-bazi-primary"
-            />
+          <Checkbox
+            checked={boundaryAcknowledged}
+            onCheckedChange={onBoundaryAckChange}
+            label="我已了解修正跨界，按当前所选标准排盘"
+            className={`${TEXT.bodySm} mt-3 min-h-touch font-medium text-bazi-ink`}
+          >
             我已了解修正跨界，按当前所选标准排盘
-          </label>
+          </Checkbox>
         </div>
       ) : null}
 

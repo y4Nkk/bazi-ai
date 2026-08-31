@@ -9,6 +9,7 @@ import { LuckPanel } from "./luck-panel";
 import { AnalysisPanel, type AnalysisState } from "./analysis-panel";
 import { TEXT } from "@/lib/typography";
 import { fetchAnalysis, fetchChartSnapshot } from "@/lib/client";
+import type { Place } from "@/lib/places";
 import { selectionFromSnapshot } from "@/ai/schema";
 import type { ProviderId } from "@/ai/providers";
 import type { BirthInput } from "@/domain/bazi/normalize";
@@ -27,8 +28,10 @@ const INITIAL_FORM: BirthFormState = {
   chartGender: "male",
   timezone: "Asia/Shanghai",
   birthplace: "",
-  longitude: "121.47",
-  latitude: "31.23",
+  // Empty until a place is picked or the user types coordinates; the native
+  // required check blocks submission so stale defaults can never slip through.
+  longitude: "",
+  latitude: "",
   timeStandard: "civil",
 };
 
@@ -146,6 +149,16 @@ export function Workbench() {
     setFormState((prev) => ({ ...prev, [field]: value }));
   }, []);
 
+  const handlePlaceSelect = useCallback((place: Place) => {
+    setFormState((prev) => ({
+      ...prev,
+      birthplace: place.name,
+      timezone: place.timezone,
+      longitude: place.lon.toFixed(2),
+      latitude: place.lat.toFixed(2),
+    }));
+  }, []);
+
   const boundaryBlocked = snapshot?.boundary !== null && snapshot?.boundary !== undefined
     ? !boundaryAcknowledged
     : false;
@@ -198,6 +211,7 @@ export function Workbench() {
           <BirthForm
             formState={formState}
             onFieldChange={handleFieldChange}
+            onPlaceSelect={handlePlaceSelect}
             onSubmit={handleSubmit}
             loading={chartLoading}
             snapshot={snapshot}

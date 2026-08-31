@@ -20,15 +20,38 @@ const check = (ok, label, detail = "") => {
   if (!ok) failures.push(line);
 };
 
+/** Radix Select: open the trigger, then click the option by visible label. */
+async function pickSelect(page, triggerId, optionLabel) {
+  await page.click(`#${triggerId}`);
+  await page.getByRole("option", { name: optionLabel }).click();
+}
+
 async function fillBirthForm(page) {
   await page.fill("#birth-date", "1990-05-15");
   await page.fill("#birth-time", "14:00");
   await page.check('input[name="chart-gender"][value="male"]');
   await page.fill("#birthplace", "上海");
-  await page.selectOption("#timezone", "Asia/Shanghai");
+  await pickSelect(page, "timezone", "Asia/Shanghai");
   await page.fill("#longitude", "121.47");
   await page.fill("#latitude", "31.23");
   await page.check('input[name="time-standard"][value="civil"]');
+}
+
+/** Picking a place from the combobox must auto-fill lon/lat (and timezone). */
+async function checkPlacePicker(page, label) {
+  await page.fill("#birthplace", "乌鲁");
+  await page.waitForSelector('div[role="listbox"]', { timeout: 10000 });
+  await page.screenshot({ path: join(OUT_DIR, `${label}-place-picker.png`) });
+  await page.getByRole("option", { name: /乌鲁木齐/ }).click();
+  const lon = await page.inputValue("#longitude");
+  const lat = await page.inputValue("#latitude");
+  const tz = (await page.locator("#timezone").textContent())?.trim();
+  const place = await page.inputValue("#birthplace");
+  check(
+    place === "乌鲁木齐" && lon === "87.62" && lat === "43.79" && tz === "Asia/Shanghai",
+    `${label}: picking 乌鲁木齐 auto-fills birthplace/lon/lat/timezone`,
+    `place=${place} lon=${lon} lat=${lat} tz=${tz}`,
+  );
 }
 
 async function waitForCandleCount(page, exactCount) {
@@ -61,7 +84,10 @@ async function layoutAudit(page, label) {
       if (rect.width === 0 || rect.height === 0) continue;
       // sr-only inputs are intentionally invisible; plain text labels wrap no
       // control and are not touch targets (their controls are audited here).
+      // aria-hidden subtrees (e.g. Radix's 1x1 form-compat select) are also
+      // unreachable and excluded.
       if (el.classList.contains("sr-only")) continue;
+      if (el.closest('[aria-hidden="true"]')) continue;
       if (el.tagName === "LABEL" && !el.querySelector("input")) continue;
       if (rect.height < 43.5) {
         out.push(`${el.tagName.toLowerCase()}#${el.id || ""} h=${rect.height.toFixed(1)}w=${rect.width.toFixed(1)}`);
@@ -79,6 +105,7 @@ const desktop = await browser.newContext({ viewport: { width: 1280, height: 800 
 const page = await desktop.newPage();
 await page.goto(BASE_URL);
 await page.waitForLoadState("domcontentloaded");
+await checkPlacePicker(page, "desktop");
 await fillBirthForm(page);
 await page.screenshot({ path: join(OUT_DIR, "desktop-initial.png") });
 
@@ -101,13 +128,13 @@ const kpiAfter = await page
 check(kpiBefore !== kpiAfter, "desktop: selecting a candle updates the detail panel", `${kpiBefore.slice(0, 40)} → ${kpiAfter.slice(0, 40)}`);
 
 // Resolution switching preserves the dimension.
-await page.selectOption("#dimension-select", "wealth");
+await pickSelect(page, "dimension-select", "财运");
 await waitForCandleCount(page, 31);
 await page.click('text=月视图');
 await waitForCandleCount(page, 24);
 check(true, "desktop: month view renders 24 candles");
-const dimAfterSwitch = await page.inputValue("#dimension-select");
-check(dimAfterSwitch === "wealth", "desktop: resolution switch preserves dimension", `dimension=${dimAfterSwitch}`);
+const dimAfterSwitch = (await page.locator("#dimension-select").textContent())?.trim();
+check(dimAfterSwitch === "财运", "desktop: resolution switch preserves dimension", `dimension=${dimAfterSwitch}`);
 await page.screenshot({ path: join(OUT_DIR, "desktop-chart-month.png"), fullPage: true });
 
 await page.click('text=年视图');
@@ -123,6 +150,7 @@ const mobile = await browser.newContext({ viewport: { width: 390, height: 844 } 
 const mpage = await mobile.newPage();
 await mpage.goto(BASE_URL);
 await mpage.waitForLoadState("domcontentloaded");
+await checkPlacePicker(mpage, "mobile");
 await fillBirthForm(mpage);
 await mpage.click('button[type="submit"]');
 await waitForCandleCount(mpage, 31);

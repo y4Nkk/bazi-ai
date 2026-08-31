@@ -89,6 +89,8 @@ module.exports = {
         "bazi-lg": "var(--bazi-shadow-lg)",
         "bazi-xl": "var(--bazi-shadow-xl)",
         "bazi-glow": "var(--bazi-shadow-glow)",
+        control: "var(--bazi-shadow-control)",
+        "control-checked": "var(--bazi-shadow-control-checked)",
       },
       backdropBlur: {
         xs: "var(--bazi-blur-xs)",
@@ -107,6 +109,7 @@ module.exports = {
       },
       borderRadius: {
         none: "0px",
+        control: "var(--bazi-radius-control)",
         sm: "var(--bazi-radius-sm)",
         md: "var(--bazi-radius-md)",
         lg: "var(--bazi-radius-lg)",

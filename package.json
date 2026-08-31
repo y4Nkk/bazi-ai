@@ -11,6 +11,8 @@
     "verify:ui": "node scripts/ui-walkthrough.mjs"
   },
   "dependencies": {
+    "@radix-ui/react-select": "^2.3.7",
+    "lucide-react": "^1.37.0",
     "lunar-typescript": "^1.7.6",
     "next": "^14.2.32",
     "react": "^18.3.1",

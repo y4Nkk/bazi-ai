@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { Select } from "./controls";
 import { TEXT } from "@/lib/typography";
 import { factorLabel } from "@/domain/fortune/factors";
 import {
@@ -95,19 +96,16 @@ export function TrendChart({
         <label htmlFor="dimension-select" className={`${TEXT.label} text-bazi-ink-secondary`}>
           解读维度
         </label>
-        <select
+        <Select
           id="dimension-select"
           value={dimension}
-          onChange={(event) => onDimensionChange(event.target.value as Dimension)}
-          className="min-h-touch rounded-sm border border-bazi-input bg-bazi-surface px-3 text-body-sm text-bazi-ink"
+          onValueChange={(value) => onDimensionChange(value as Dimension)}
           disabled={loading}
-        >
-          {(Object.keys(DIMENSION_LABELS) as Dimension[]).map((key) => (
-            <option key={key} value={key}>
-              {DIMENSION_LABELS[key]}
-            </option>
-          ))}
-        </select>
+          options={(Object.keys(DIMENSION_LABELS) as Dimension[]).map((key) => ({
+            value: key,
+            label: DIMENSION_LABELS[key],
+          }))}
+        />
         <p className={`${TEXT.micro} ml-auto flex items-center gap-3`}>
           <span className="flex items-center gap-1">
             <span aria-hidden className="inline-block size-2 rounded-full bg-bazi-success" />

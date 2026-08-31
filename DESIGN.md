@@ -64,7 +64,7 @@ All values are defined in `src/styles/tokens.css`. The authoritative semantic fa
 
 ### Geometry, space, and depth
 
-The radius ladder is 12, 16, 20, 24, 28, 32px, plus the 999px pill. Controls use `rounded-sm` (12px); cards use `rounded-md` or `rounded-lg`; major overlays use `rounded-xl` or above. Structural spacing follows 4, 8, 12, 16, 24, 32, 40, and 48px. Do not use arbitrary Tailwind radius, spacing, color, blur, shadow, or duration values.
+The radius ladder is 12, 16, 20, 24, 28, 32px, plus the 999px pill and a 5px micro-control radius (`rounded-control`) used only inside control components such as the checkbox square. Controls use `rounded-sm` (12px); cards use `rounded-md` or `rounded-lg`; major overlays use `rounded-xl` or above. Structural spacing follows 4, 8, 12, 16, 24, 32, 40, and 48px. Do not use arbitrary Tailwind radius, spacing, color, blur, shadow, or duration values.
 
 Small and medium shadows are intentionally transparent: ordinary cards stay flat. `shadow-bazi-lg`, `shadow-bazi-xl`, and `shadow-bazi-glow` are for floating UI and one focused chart/media visual only.
 
@@ -100,6 +100,8 @@ Desktop uses a quiet workbench: a compact header, input and period controls, a d
 Use a 980px reading/report ceiling, 24px desktop gutters, and 16px phone gutters. Chart width always wins over decorative whitespace.
 
 ## Components
+
+Global form controls — `Input`, `Textarea`, `Checkbox`, and `Select` — are ported from SpiralCoder's `web/src/components/ui` set, re-tokenized to `--bazi-*`, and sized to the 44px touch contract. They live in `src/components/controls.tsx`; screens must use them instead of raw `<input>`, `<textarea>`, or `<select>` elements.
 
 ### App shell and form
 

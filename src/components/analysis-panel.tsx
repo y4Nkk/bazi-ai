@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Field, inputClass } from "./controls";
+import { Button, Field, Input, Select, Textarea } from "./controls";
 import { TEXT } from "@/lib/typography";
 import { PROVIDER_PRESETS, type ProviderId } from "@/ai/providers";
 import type { AnalysisOutput } from "@/ai/schema";
@@ -66,31 +66,27 @@ export function AnalysisPanel({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="模型供应商" htmlFor="ai-provider">
-              <select
+              <Select
                 id="ai-provider"
                 value={provider}
-                onChange={(event) => {
-                  const next = event.target.value as ProviderId;
+                onValueChange={(value) => {
+                  const next = value as ProviderId;
                   setProvider(next);
                   setModel(PROVIDER_PRESETS[next].models[0]);
                 }}
-                className={inputClass}
-              >
-                {Object.values(PROVIDER_PRESETS).map((preset) => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.label}
-                  </option>
-                ))}
-              </select>
+                options={Object.values(PROVIDER_PRESETS).map((preset) => ({
+                  value: preset.id,
+                  label: preset.label,
+                }))}
+              />
             </Field>
             <Field label="模型标识" helper={`常用：${PROVIDER_PRESETS[provider].models.join("、")}`} htmlFor="ai-model">
-              <input
+              <Input
                 id="ai-model"
                 type="text"
                 required
                 value={model}
                 onChange={(event) => setModel(event.target.value)}
-                className={inputClass}
               />
             </Field>
           </div>
@@ -100,7 +96,7 @@ export function AnalysisPanel({
             helper="保存在浏览器内存中；关闭页面即消失。不会写入任何存储或日志。"
             htmlFor="ai-key"
           >
-            <input
+            <Input
               id="ai-key"
               type="password"
               required
@@ -109,7 +105,6 @@ export function AnalysisPanel({
               placeholder="sk-…"
               value={apiKey}
               onChange={(event) => setApiKey(event.target.value)}
-              className={inputClass}
             />
           </Field>
 
@@ -118,13 +113,12 @@ export function AnalysisPanel({
             helper={`解读对象：${selectedResolution && selectedDimension && selectedTimestamp ? `${RESOLUTION_LABELS[selectedResolution as "day" | "month" | "year"]} ${selectedTimestamp} · ${DIMENSION_LABELS[selectedDimension]}维度` : "当前选中周期"}`}
             htmlFor="ai-question"
           >
-            <textarea
+            <Textarea
               id="ai-question"
               rows={2}
               maxLength={300}
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              className={`${inputClass} py-2`}
             />
           </Field>
 
