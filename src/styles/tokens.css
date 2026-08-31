@@ -1,0 +1,176 @@
+/* Bazi AI unified design tokens: the only owner of --bazi-* values. */
+
+:root {
+  --bazi-vh: 100dvh;
+  --bazi-vh-full: var(--bazi-vh);
+  --bazi-vh-sheet-sm: calc(var(--bazi-vh) * 65 / 100);
+  --bazi-vh-sheet-lg: calc(var(--bazi-vh) * 92 / 100);
+
+  --font-family: "MiSans", system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono-family: "Maple Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+  --bazi-brand-primary: #1460ff;
+  --bazi-brand-secondary: #ea76cb;
+  --bazi-brand-tertiary: #7287fd;
+  --bazi-brand-highlight: rgb(234 118 203);
+  --bazi-brand-shadow-define: 0 1px 2px rgb(0 0 0 / 5%);
+  --bazi-brand-shadow-lift: 0 8px 24px rgb(0 0 0 / 8%);
+  --bazi-brand-shadow-float: 0 12px 32px rgb(0 0 0 / 10%), 0 1px 2px rgb(0 0 0 / 4%);
+
+  --bazi-background: 0 0% 98%;
+  --bazi-surface: 240 16% 96%;
+  --bazi-surface-elevated: 240 27% 98% / 0.92;
+  --bazi-surface-muted: 240 12% 93%;
+  --bazi-surface-glass: 240 16% 96% / 0.72;
+  --bazi-surface-tinted: 220.596 100% 53.922% / 0.1;
+  --bazi-surface-tinted-strong: 220.596 100% 53.922% / 0.16;
+  --bazi-surface-warm: 316 73% 69% / 0.12;
+
+  --bazi-ink: 240 8% 20%;
+  --bazi-ink-secondary: 240 8% 32%;
+  --bazi-ink-muted: 240 7% 45%;
+  --bazi-ink-placeholder: 240 6% 55%;
+
+  --bazi-primary: 220.596 100% 53.922%;
+  --bazi-primary-foreground: 0 0% 100%;
+  --bazi-secondary: 316 73% 69%;
+  --bazi-tertiary: 231 97% 72%;
+  --bazi-ai-accent: #8839ef;
+
+  --bazi-success: 109 58% 40%;
+  --bazi-success-soft: 109 58% 40% / 0.12;
+  --bazi-warning: 35 77% 49%;
+  --bazi-warning-soft: 35 77% 49% / 0.12;
+  --bazi-danger: 347 87% 44%;
+  --bazi-danger-soft: 347 87% 44% / 0.12;
+  --bazi-danger-hover: #b8072c;
+  --bazi-info: 220 91% 54%;
+  --bazi-info-soft: 220 91% 54% / 0.1;
+  --bazi-link: 218 80% 46%;
+  --bazi-link-soft: 218 80% 46% / 0.1;
+
+  --bazi-border: 240 12% 91%;
+  --bazi-border-soft: 240 12% 91% / 0.6;
+  --bazi-border-strong: 240 9% 83%;
+  --bazi-border-whisper: 243 17% 27% / 0.08;
+  --bazi-input: 240 9% 83%;
+
+  --bazi-shadow-sm: 0 0 #0000;
+  --bazi-shadow-md: 0 0 #0000;
+  --bazi-shadow-lg: 0 8px 24px rgb(0 0 0 / 8%), 0 1px 2px rgb(0 0 0 / 4%);
+  --bazi-shadow-xl: 0 12px 32px rgb(0 0 0 / 10%), 0 2px 6px rgb(0 0 0 / 4%);
+  --bazi-shadow-glow: 0 0 0 1px rgb(255 255 255 / 60%), 0 12px 36px rgb(20 96 255 / 18%);
+  --bazi-glow-primary: rgb(20 96 255 / 20%);
+  --bazi-glow-warm: rgb(234 118 203 / 20%);
+  --bazi-glow-cool: rgb(114 135 253 / 16%);
+
+  --bazi-gradient-brand: linear-gradient(135deg, hsl(var(--bazi-primary)) 0%, var(--bazi-brand-secondary) 100%);
+  --bazi-gradient-accent-text: linear-gradient(90deg, #348aff 0%, #1460ff 50%, #ae68ff 100%);
+  --bazi-gradient-energy: linear-gradient(96deg, hsl(var(--bazi-info)) 0%, hsl(var(--bazi-primary)) 50%, hsl(var(--bazi-secondary)) 100%);
+  --bazi-gradient-button: linear-gradient(88deg, #52e1ff -15.8%, #1169ff 33.76%, #0a5dff 47.15%, #2d6cfe 69.13%, #f9c9fd 115.45%);
+  --bazi-ai-gradient: linear-gradient(135deg, #8839ef, #7287fd, #ea76cb);
+  --bazi-ai-gradient-active: linear-gradient(135deg, #1e66f5, #8839ef, #ea76cb);
+  --bazi-ai-gradient-hover: linear-gradient(135deg, rgb(136 57 239 / 14%), rgb(114 135 253 / 12%), rgb(234 118 203 / 14%));
+  --bazi-ai-gradient-rest: linear-gradient(135deg, rgb(136 57 239 / 0%), rgb(114 135 253 / 0%), rgb(234 118 203 / 0%));
+
+  --bazi-radius-sm: 12px;
+  --bazi-radius-md: 16px;
+  --bazi-radius-lg: 20px;
+  --bazi-radius-xl: 24px;
+  --bazi-radius-2xl: 28px;
+  --bazi-radius-3xl: 32px;
+  --bazi-radius-tail: 18px 18px 18px 4px;
+  --bazi-radius-pill: 999px;
+
+  --bazi-space-1: 4px;
+  --bazi-space-2: 8px;
+  --bazi-space-3: 12px;
+  --bazi-space-4: 16px;
+  --bazi-space-5: 24px;
+  --bazi-space-6: 32px;
+  --bazi-space-7: 40px;
+  --bazi-space-8: 48px;
+
+  --bazi-blur-xs: 8px;
+  --bazi-blur-sm: 12px;
+  --bazi-blur-md: 20px;
+  --bazi-blur-lg: 24px;
+  --bazi-blur-xl: 40px;
+  --bazi-motion-fast: 180ms;
+  --bazi-motion-base: 260ms;
+  --bazi-motion-slow: 400ms;
+  --bazi-motion-ambient: 48s;
+  --bazi-ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --bazi-touch: 44px;
+
+  --bazi-z-background: -10;
+  --bazi-z-base: 0;
+  --bazi-z-raised: 10;
+  --bazi-z-focus: 20;
+  --bazi-z-sticky: 100;
+  --bazi-z-floating: 150;
+  --bazi-z-overlay: 200;
+  --bazi-z-popup: 300;
+  --bazi-z-toast: 400;
+  --bazi-z-debug: 900;
+}
+
+.dark {
+  --bazi-background: 231 15% 20%;
+  --bazi-surface: 232 14% 31%;
+  --bazi-surface-elevated: 232 14% 35% / 0.94;
+  --bazi-surface-muted: 231 15% 24%;
+  --bazi-surface-glass: 232 14% 31% / 0.72;
+  --bazi-surface-tinted: 216 100% 72% / 0.16;
+  --bazi-surface-tinted-strong: 216 100% 72% / 0.24;
+  --bazi-surface-warm: 326 100% 74% / 0.14;
+  --bazi-ink: 60 30% 96%;
+  --bazi-ink-secondary: 60 20% 90%;
+  --bazi-ink-muted: 231 37% 52%;
+  --bazi-ink-placeholder: 231 24% 63%;
+  --bazi-primary: 216 100% 72%;
+  --bazi-primary-foreground: 231 15% 20%;
+  --bazi-secondary: 326 100% 74%;
+  --bazi-tertiary: 265 89% 78%;
+  --bazi-ai-accent: #bd93f9;
+  --bazi-success: 135 94% 65%;
+  --bazi-success-soft: 135 94% 65% / 0.16;
+  --bazi-warning: 65 92% 76%;
+  --bazi-warning-soft: 65 92% 76% / 0.16;
+  --bazi-danger: 0 100% 67%;
+  --bazi-danger-soft: 0 100% 67% / 0.16;
+  --bazi-danger-hover: #ff6e86;
+  --bazi-info: 191 97% 77%;
+  --bazi-info-soft: 191 97% 77% / 0.16;
+  --bazi-link: 216 100% 72%;
+  --bazi-link-soft: 216 100% 72% / 0.16;
+  --bazi-border: 232 14% 40%;
+  --bazi-border-soft: 232 14% 40% / 0.6;
+  --bazi-border-strong: 231 15% 52%;
+  --bazi-border-whisper: 60 30% 96% / 0.1;
+  --bazi-input: 231 15% 52%;
+  --bazi-shadow-glow: 0 0 0 1px rgb(248 248 242 / 12%), 0 12px 36px rgb(112 167 255 / 22%);
+}
+
+/* Ambient liquid-light field: transform-only motion; the reduced-motion block
+   above collapses it to a static frame. */
+@keyframes bazi-drift-a {
+  from { transform: translate3d(-3%, -2%, 0) scale(1); opacity: 0.7; }
+  to { transform: translate3d(3%, 2%, 0) scale(1.1); opacity: 1; }
+}
+
+@keyframes bazi-drift-b {
+  from { transform: translate3d(3%, 2%, 0) scale(1.06); opacity: 0.6; }
+  to { transform: translate3d(-3%, -3%, 0) scale(1); opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}

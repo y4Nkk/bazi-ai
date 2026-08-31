@@ -1,0 +1,26 @@
+@import "../styles/tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-bazi-background text-bazi-ink font-sans antialiased;
+    font-family: var(--font-family);
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--bazi-primary));
+    outline-offset: 2px;
+  }
+}
