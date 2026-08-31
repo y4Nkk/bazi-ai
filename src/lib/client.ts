@@ -1,6 +1,6 @@
 /** Client-side helpers for the two API routes. */
 import type { BirthInput } from "@/domain/bazi/normalize";
-import type { ChartSnapshot, Dimension, Resolution, TrendRange } from "@/domain/fortune/types";
+import type { ChartSnapshot, Dimension, Resolution, TrendRange } from "@/domain/bazi/contract";
 
 export interface ApiError {
   error: { code: string; message: string; issues?: Array<{ path: string; message: string }> };

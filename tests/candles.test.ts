@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildChartSnapshot } from "../src/domain/fortune/snapshot";
+import { calculateBaziSnapshot } from "../src/domain/bazi/snapshot";
 import type { BirthInput } from "../src/domain/bazi/normalize";
-import type { Candle } from "../src/domain/fortune/types";
+import type { Candle } from "../src/domain/bazi/contract";
 
 const KNOWN_INPUT: BirthInput = {
-  calendar: "gregorian",
-  localDateTime: "1990-05-15T14:00",
+  birthInstant: "1990-05-15T14:00:00+09:00",
   chartGender: "male",
   timezone: "Asia/Shanghai",
-  birthplace: "上海",
   longitude: 121.47,
   latitude: 31.23,
   timeStandard: "civil",
@@ -20,7 +18,7 @@ const ohlcOk = (candle: Candle): boolean =>
 
 describe("known birth fixture", () => {
   it("returns stable pillars and day master", () => {
-    const snapshot = buildChartSnapshot({
+    const snapshot = calculateBaziSnapshot({
       input: KNOWN_INPUT,
       range: { start: "2026-08-01", end: "2026-08-31" },
       dimension: "overall",
@@ -30,8 +28,8 @@ describe("known birth fixture", () => {
     expect(snapshot.natal.dayMaster.stem).toBe("庚");
     expect(snapshot.natal.dayMaster.element).toBe("金");
     expect(snapshot.civilCandidate.shichen).toBe("未");
-    expect(snapshot.engineVersion).toBeTruthy();
-    expect(snapshot.scoringProfileVersion).toBe("scoring-v1");
+    expect(snapshot.algorithmVersion).toMatch(/^zp-1\.3\.4-[0-9a-f]{8}-noaa-eot-2006-lunar-typescript-1\.8\.6$/);
+    expect(snapshot.judgment.primaryStructure).toBeTruthy();
     expect(snapshot.snapshotKey).toMatch(/^[0-9a-f]{16}$/);
   });
 });
@@ -43,7 +41,7 @@ describe("candle aggregation invariants", () => {
       ["month", { start: "2026-01-01", end: "2027-12-31" }],
       ["year", { start: "2026-01-01", end: "2035-12-31" }],
     ] as const) {
-      const snapshot = buildChartSnapshot({
+      const snapshot = calculateBaziSnapshot({
         input: KNOWN_INPUT,
         range,
         dimension: "overall",
@@ -58,7 +56,7 @@ describe("candle aggregation invariants", () => {
   });
 
   it("daily candles agree with their twelve shichen points", () => {
-    const snapshot = buildChartSnapshot({
+    const snapshot = calculateBaziSnapshot({
       input: KNOWN_INPUT,
       range: { start: "2026-08-01", end: "2026-08-07" },
       dimension: "wealth",
@@ -78,7 +76,7 @@ describe("candle aggregation invariants", () => {
   it("monthly candles agree with the daily candles inside each month", () => {
     const dailyCandles: Candle[] = [];
     for (const monthStart of ["2026-08-01", "2026-09-01", "2026-10-01"]) {
-      const dailySnapshot = buildChartSnapshot({
+      const dailySnapshot = calculateBaziSnapshot({
         input: KNOWN_INPUT,
         range: { start: monthStart, end: monthStart.slice(0, 7) === "2026-08" ? "2026-08-31" : monthStart.slice(0, 7) === "2026-09" ? "2026-09-30" : "2026-10-31" },
         dimension: "overall",
@@ -86,7 +84,7 @@ describe("candle aggregation invariants", () => {
       });
       dailyCandles.push(...dailySnapshot.series.candles);
     }
-    const monthlySnapshot = buildChartSnapshot({
+    const monthlySnapshot = calculateBaziSnapshot({
       input: KNOWN_INPUT,
       range: { start: "2026-08-01", end: "2026-10-31" },
       dimension: "overall",
@@ -118,19 +116,19 @@ describe("determinism and cache-key contract", () => {
       dimension: "overall" as const,
       resolution: "day" as const,
     };
-    const first = buildChartSnapshot(args);
-    const second = buildChartSnapshot(args);
+    const first = calculateBaziSnapshot(args);
+    const second = calculateBaziSnapshot(args);
     expect(JSON.stringify(first)).toBe(JSON.stringify(second));
   });
 
   it("includes the time standard in the snapshot key and output", () => {
-    const civil = buildChartSnapshot({
+    const civil = calculateBaziSnapshot({
       input: KNOWN_INPUT,
       range: { start: "2026-08-01", end: "2026-08-31" },
       dimension: "overall",
       resolution: "day",
     });
-    const solar = buildChartSnapshot({
+    const solar = calculateBaziSnapshot({
       input: { ...KNOWN_INPUT, timeStandard: "trueSolar" },
       range: { start: "2026-08-01", end: "2026-08-31" },
       dimension: "overall",
@@ -139,5 +137,25 @@ describe("determinism and cache-key contract", () => {
     expect(civil.snapshotKey).not.toBe(solar.snapshotKey);
     expect(civil.selectedStandard).toBe("civil");
     expect(solar.selectedStandard).toBe("trueSolar");
+  });
+
+  it("keeps display metadata out of the deterministic snapshot key and series", () => {
+    const anonymous = calculateBaziSnapshot({
+      input: KNOWN_INPUT,
+      range: { start: "2026-08-01", end: "2026-08-31" },
+      dimension: "overall",
+      resolution: "day",
+    });
+    const named = calculateBaziSnapshot({
+      input: { ...KNOWN_INPUT, subjectName: "王小明", birthplace: "上海", latitude: 39.9 },
+      range: { start: "2026-08-01", end: "2026-08-31" },
+      dimension: "overall",
+      resolution: "day",
+    });
+    expect(named.snapshotKey).toBe(anonymous.snapshotKey);
+    expect(named.series).toEqual(anonymous.series);
+    expect(named.input.subjectName).toBe("王小明");
+    expect(named.input.birthplace).toBe("上海");
+    expect(named.input.latitude).toBe(39.9);
   });
 });

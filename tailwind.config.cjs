@@ -68,6 +68,13 @@ module.exports = {
           "info-soft": "hsl(var(--bazi-info-soft))",
           link: "hsl(var(--bazi-link))",
           "link-soft": "hsl(var(--bazi-link-soft))",
+          element: {
+            wood: "hsl(var(--bazi-element-wood))",
+            fire: "hsl(var(--bazi-element-fire))",
+            earth: "hsl(var(--bazi-element-earth))",
+            metal: "hsl(var(--bazi-element-metal))",
+            water: "hsl(var(--bazi-element-water))",
+          },
           border: "hsl(var(--bazi-border))",
           "border-soft": "hsl(var(--bazi-border-soft))",
           "border-strong": "hsl(var(--bazi-border-strong))",
@@ -106,6 +113,11 @@ module.exports = {
       },
       transitionTimingFunction: {
         "smooth-out": "var(--bazi-ease-standard)",
+        spring: "var(--bazi-ease-spring)",
+      },
+      animation: {
+        "pop-in": "bazi-pop-in var(--bazi-motion-fast) var(--bazi-ease-spring)",
+        "select-in": "bazi-select-in var(--bazi-motion-fast) var(--bazi-ease-standard)",
       },
       borderRadius: {
         none: "0px",

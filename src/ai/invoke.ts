@@ -31,7 +31,7 @@ export interface InvokeArgs {
 
 export async function invokeAnalysis(args: InvokeArgs): Promise<AnalysisOutput> {
   const raw = await requestProviderText(args);
-  const output = parseAndValidate(raw);
+  const output = parseAndValidate(raw, args.selection);
   return output;
 }
 
@@ -81,7 +81,10 @@ async function fetchProvider(args: InvokeArgs, signal: AbortSignal): Promise<Res
         },
         body: JSON.stringify({
           model,
-          max_tokens: MAX_TOKENS,
+          // GPT-5.x 系列不接受 max_tokens；DeepSeek 走 OpenAI 兼容接口，保留 max_tokens。
+          ...(provider === "openai"
+            ? { max_completion_tokens: MAX_TOKENS }
+            : { max_tokens: MAX_TOKENS }),
           response_format: { type: "json_object" },
           messages: [
             { role: "system", content: system },
@@ -176,7 +179,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /** Accepts raw model text (optionally fenced), validates against the schema. */
-export function parseAndValidate(raw: string): AnalysisOutput {
+export function parseAndValidate(raw: string, selection?: AnalyzeSelection): AnalysisOutput {
   const json = stripCodeFence(raw).trim();
   let parsed: unknown;
   try {
@@ -195,7 +198,20 @@ export function parseAndValidate(raw: string): AnalysisOutput {
       .join("；");
     throw new AiInvocationError("INVALID_OUTPUT", `模型输出未通过结构校验（${issues}），已拒绝渲染。`);
   }
+  if (selection) assertCitations(result.data, selection);
   return result.data;
+}
+
+function assertCitations(output: AnalysisOutput, selection: AnalyzeSelection): void {
+  const allowed = new Set(selection.selectedPeriod.reasons.map((reason) => reason.id));
+  const cited = [
+    ...output.summaryRuleIds,
+    ...output.dimensionInterpretations.flatMap((item) => item.ruleIds),
+    ...output.selectedPeriod.ruleIds,
+  ];
+  if (cited.some((ruleId) => !allowed.has(ruleId))) {
+    throw new AiInvocationError("INVALID_OUTPUT", "模型引用了确定性快照中不存在的规则，已拒绝渲染。");
+  }
 }
 
 function stripCodeFence(text: string): string {

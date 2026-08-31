@@ -11,11 +11,13 @@
     "verify:ui": "node scripts/ui-walkthrough.mjs"
   },
   "dependencies": {
+    "@radix-ui/react-popover": "^1.1.23",
     "@radix-ui/react-select": "^2.3.7",
     "lucide-react": "^1.37.0",
-    "lunar-typescript": "^1.7.6",
+    "lunar-typescript": "1.8.6",
     "next": "^14.2.32",
     "react": "^18.3.1",
+    "react-day-picker": "^9.14.0",
     "react-dom": "^18.3.1",
     "zod": "^3.23.8"
   },

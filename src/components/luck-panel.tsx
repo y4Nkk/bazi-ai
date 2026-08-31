@@ -1,7 +1,7 @@
 "use client";
 
 import { TEXT } from "@/lib/typography";
-import type { ChartSnapshot } from "@/domain/fortune/types";
+import type { ChartSnapshot } from "@/domain/bazi/contract";
 
 export function LuckPanel({
   snapshot,

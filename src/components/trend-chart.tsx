@@ -1,16 +1,16 @@
 "use client";
 
 import { useMemo } from "react";
-import { Select } from "./controls";
+import { Button, Select } from "./controls";
 import { TEXT } from "@/lib/typography";
-import { factorLabel } from "@/domain/fortune/factors";
+import { ruleLabel } from "@/domain/bazi/rules";
 import {
   DIMENSION_LABELS,
   RESOLUTION_LABELS,
   type Candle,
   type Dimension,
   type Resolution,
-} from "@/domain/fortune/types";
+} from "@/domain/bazi/contract";
 
 const VIEW_WIDTH = 820;
 const VIEW_HEIGHT = 320;
@@ -51,18 +51,27 @@ export function TrendChart({
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className={TEXT.sectionTitle}>命轨趋势 · 传统命理趋势指数</h2>
-          <p className={TEXT.caption}>
-            0–100 文化娱乐指数，由确定性引擎聚合时辰数据得出，非市场价格或概率。
-          </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button42 label="上一窗口" onClick={() => onShiftWindow(-1)} disabled={loading}>
+          <Button
+            variant="secondary"
+            aria-label="上一窗口"
+            onClick={() => onShiftWindow(-1)}
+            disabled={loading}
+            className="min-h-touch min-w-11 px-2"
+          >
             ‹
-          </Button42>
+          </Button>
           <span className={`${TEXT.meta} min-w-32 text-center`}>{rangeLabel}</span>
-          <Button42 label="下一窗口" onClick={() => onShiftWindow(1)} disabled={loading}>
+          <Button
+            variant="secondary"
+            aria-label="下一窗口"
+            onClick={() => onShiftWindow(1)}
+            disabled={loading}
+            className="min-h-touch min-w-11 px-2"
+          >
             ›
-          </Button42>
+          </Button>
         </div>
       </header>
 
@@ -213,15 +222,13 @@ export function TrendChart({
             })}
           </svg>
 
-          <div className="flex items-baseline justify-between rounded-sm border border-bazi-border bg-bazi-surface-muted px-4 py-3">
-            <div>
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 rounded-sm border border-bazi-border bg-bazi-surface-muted px-4 py-3">
+            <div className="flex flex-col gap-1">
               <p className={TEXT.kpiLabel}>
-                {RESOLUTION_LABELS[resolution]} · {DIMENSION_LABELS[dimension]} · {selected.timestamp}
+                {RESOLUTION_LABELS[resolution]} · {DIMENSION_LABELS[dimension]} ·{" "}
+                {selected.timestamp} · 收盘指数
               </p>
-              <p className={`${TEXT.kpiValueMd} text-bazi-ink`}>
-                {selected.close}
-                <span className={`${TEXT.label} ml-2 align-middle`}>收盘指数</span>
-              </p>
+              <p className={`${TEXT.kpiValueMd} text-bazi-ink`}>{selected.close}</p>
             </div>
             <dl className={`${TEXT.tableCell} grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-4`}>
               {(
@@ -230,7 +237,7 @@ export function TrendChart({
                   ["高", selected.high],
                   ["低", selected.low],
                   ["收", selected.close],
-                ] as Array<[string, number]>
+                ] as Array<[label: string, value: number]>
               ).map(([label, value]) => (
                 <div key={label} className="flex items-baseline gap-1">
                   <dt className={TEXT.caption}>{label}</dt>
@@ -240,16 +247,16 @@ export function TrendChart({
             </dl>
           </div>
 
-          <div className="flex flex-wrap gap-2" aria-label="确定性因子码">
-            {selected.factors.length === 0 ? (
-              <p className={TEXT.caption}>该周期无命盘互动因子。</p>
+          <div className="flex flex-wrap gap-2" aria-label="确定性规则依据">
+            {selected.reasons.length === 0 ? (
+              <p className={TEXT.caption}>该周期无额外规则触发。</p>
             ) : (
-              selected.factors.map((code) => (
+              selected.reasons.map((reason) => (
                 <span
-                  key={code}
+                  key={`${reason.code}-${reason.subjects.join("-")}`}
                   className={`${TEXT.micro} rounded-full border border-bazi-border bg-bazi-surface-muted px-3 py-1 text-bazi-ink-secondary`}
                 >
-                  {factorLabel(code)}
+                  {ruleLabel(reason.code)} · {reason.subjects.join("/")}
                 </span>
               ))
             )}
@@ -266,30 +273,6 @@ function EmptyChart() {
       <p className={TEXT.bodyLg}>填写出生信息，生成可复现的命轨趋势。</p>
       <p className={TEXT.caption}>生成后可切换年、月、日粒度并选择解读维度。</p>
     </div>
-  );
-}
-
-function Button42({
-  label,
-  onClick,
-  disabled,
-  children,
-}: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      onClick={onClick}
-      disabled={disabled}
-      className="flex min-h-touch min-w-11 items-center justify-center rounded-sm border border-bazi-border bg-bazi-surface text-body text-bazi-ink-secondary transition duration-fast hover:bg-bazi-surface-muted active:scale-[0.95] disabled:opacity-50"
-    >
-      {children}
-    </button>
   );
 }
 

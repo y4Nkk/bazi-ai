@@ -9,7 +9,9 @@ import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const BASE_URL = process.env.BASE_URL ?? "http://127.0.0.1:3000";
+// localhost (not 127.0.0.1): the reload steps below re-fetch dev chunks, and
+// Next 14 dev serves them cross-origin-404 when the host mismatches.
+const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 const OUT_DIR = join(tmpdir(), "bazi-ui-walkthrough");
 mkdirSync(OUT_DIR, { recursive: true });
 
@@ -26,9 +28,34 @@ async function pickSelect(page, triggerId, optionLabel) {
   await page.getByRole("option", { name: optionLabel }).click();
 }
 
+/** Picks the birth date through the DatePicker popover: 今天 (the run day). */
+async function pickBirthDate(page) {
+  await page.click("#birth-date");
+  await page.getByRole("button", { name: "今天", exact: true }).click();
+}
+
+/** Picks the birth time through the TimePicker popover: 14:00. */
+async function pickBirthTime(page) {
+  await page.click("#birth-time");
+  await page
+    .getByRole("group", { name: "小时" })
+    .getByRole("button", { name: "14", exact: true })
+    .click();
+  await page
+    .getByRole("group", { name: "分钟" })
+    .getByRole("button", { name: "00", exact: true })
+    .click();
+  await page.getByRole("button", { name: "完成", exact: true }).click();
+}
+
+function todayIso() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
 async function fillBirthForm(page) {
-  await page.fill("#birth-date", "1990-05-15");
-  await page.fill("#birth-time", "14:00");
+  await pickBirthDate(page);
+  await pickBirthTime(page);
   await page.check('input[name="chart-gender"][value="male"]');
   await page.fill("#birthplace", "上海");
   await pickSelect(page, "timezone", "Asia/Shanghai");
@@ -52,6 +79,35 @@ async function checkPlacePicker(page, label) {
     `${label}: picking 乌鲁木齐 auto-fills birthplace/lon/lat/timezone`,
     `place=${place} lon=${lon} lat=${lat} tz=${tz}`,
   );
+}
+
+const PROVIDER_KEY_URLS = {
+  OpenAI: "https://platform.openai.com/api-keys",
+  Anthropic: "https://platform.claude.com/settings/keys",
+  Google: "https://aistudio.google.com/apikey",
+  DeepSeek: "https://platform.deepseek.com/api_keys",
+};
+
+async function checkAiProviderLinks(page, label) {
+  const defaultProvider = (await page.locator("#ai-provider").textContent())?.trim();
+  const defaultModel = await page.inputValue("#ai-model");
+  check(
+    defaultProvider === "DeepSeek" && defaultModel === "deepseek-v4-flash",
+    `${label}: AI defaults to DeepSeek`,
+    `provider=${defaultProvider} model=${defaultModel}`,
+  );
+
+  for (const [provider, expectedUrl] of Object.entries(PROVIDER_KEY_URLS)) {
+    await pickSelect(page, "ai-provider", provider);
+    const link = page.getByRole("link", { name: `获取 ${provider} API Key` });
+    check(
+      (await link.getAttribute("href")) === expectedUrl,
+      `${label}: ${provider} API-key link targets its official console`,
+      await link.getAttribute("href"),
+    );
+  }
+
+  await pickSelect(page, "ai-provider", "DeepSeek");
 }
 
 async function waitForCandleCount(page, exactCount) {
@@ -114,6 +170,23 @@ await waitForCandleCount(page, 31);
 await page.screenshot({ path: join(OUT_DIR, "desktop-chart-day.png"), fullPage: true });
 check(true, "desktop: day view renders a month of candles", "count=31");
 
+// After generation the form collapses into a one-line birth summary.
+await page.waitForSelector('section[aria-label="出生信息摘要"]');
+const summaryText = await page.locator('section[aria-label="出生信息摘要"]').textContent();
+check(
+  Boolean(summaryText?.includes("Asia/Shanghai")) && Boolean(summaryText?.includes(todayIso())),
+  "desktop: form collapses into a birth summary after generation",
+  summaryText?.trim().slice(0, 60) ?? "",
+);
+check(
+  (await page.locator("#birth-form").count()) === 0,
+  "desktop: full form hidden after generation",
+);
+await page.locator('button', { hasText: "修改出生信息" }).first().click();
+await page.waitForSelector("#birth-form");
+check(true, "desktop: edit toggle reopens the form");
+await checkAiProviderLinks(page, "desktop");
+
 // Selected candle panel updates after clicking a candle.
 const kpiBefore = await page
   .locator("p", { hasText: /收盘指数/ })
@@ -142,7 +215,25 @@ await waitForCandleCount(page, 12);
 check(true, "desktop: year view renders 12 candles");
 await page.screenshot({ path: join(OUT_DIR, "desktop-chart-year.png"), fullPage: true });
 
+// A refresh restores the cached chart (year view, 财运) without resubmitting.
+await page.reload();
+await page.waitForSelector('section[aria-label="出生信息摘要"]');
+await waitForCandleCount(page, 12);
+const restoredDim = (await page.locator("#dimension-select").textContent())?.trim();
+check(
+  restoredDim === "财运",
+  "desktop: refresh restores the cached chart without re-submitting",
+  `candles=12 dimension=${restoredDim}`,
+);
+await page.screenshot({ path: join(OUT_DIR, "desktop-restored.png"), fullPage: true });
+
 await layoutAudit(page, "desktop");
+
+// A corrupted cache entry is discarded and the fresh form is shown.
+await page.evaluate(() => window.localStorage.setItem("bazi.workbench.zp1", "{not json"));
+await page.reload();
+await page.waitForSelector("#birth-form");
+check(true, "desktop: corrupted cache is discarded, fresh form shown");
 await desktop.close();
 
 /* ---------------- Mobile ---------------- */

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { ExternalLink } from "lucide-react";
 import { Button, Field, Input, Select, Textarea } from "./controls";
 import { TEXT } from "@/lib/typography";
-import { PROVIDER_PRESETS, type ProviderId } from "@/ai/providers";
+import { DEFAULT_PROVIDER_ID, PROVIDER_PRESETS, type ProviderId } from "@/ai/providers";
 import type { AnalysisOutput } from "@/ai/schema";
-import { DIMENSION_LABELS, RESOLUTION_LABELS, type Dimension } from "@/domain/fortune/types";
+import { DIMENSION_LABELS, RESOLUTION_LABELS, type Dimension } from "@/domain/bazi/contract";
 
 export interface AnalysisState {
   status: "idle" | "loading" | "done" | "error";
@@ -14,7 +15,6 @@ export interface AnalysisState {
 }
 
 export function AnalysisPanel({
-  hasSnapshot,
   boundaryBlocked,
   selectedTimestamp,
   selectedResolution,
@@ -22,7 +22,6 @@ export function AnalysisPanel({
   state,
   onRequest,
 }: {
-  hasSnapshot: boolean;
   boundaryBlocked: boolean;
   selectedTimestamp: string | null;
   selectedResolution: string | null;
@@ -30,41 +29,31 @@ export function AnalysisPanel({
   state: AnalysisState;
   onRequest: (args: { provider: ProviderId; model: string; apiKey: string; question: string }) => void;
 }) {
-  const [provider, setProvider] = useState<ProviderId>("openai");
-  const [model, setModel] = useState<string>(PROVIDER_PRESETS.openai.models[0]);
+  const [provider, setProvider] = useState<ProviderId>(DEFAULT_PROVIDER_ID);
+  const [model, setModel] = useState<string>(PROVIDER_PRESETS[DEFAULT_PROVIDER_ID].models[0]);
   const [apiKey, setApiKey] = useState("");
   const [question, setQuestion] = useState("");
+  const activePreset = PROVIDER_PRESETS[provider];
 
-  const canRequest = hasSnapshot && !boundaryBlocked && apiKey.trim().length >= 8 && state.status !== "loading";
+  const canRequest = !boundaryBlocked && apiKey.trim().length >= 8 && state.status !== "loading";
 
   return (
     <section
       className="flex flex-col gap-4 rounded-lg border border-bazi-border bg-bazi-surface p-5"
       aria-label="AI 解读"
     >
-      <div>
-        <h2 className={TEXT.sectionTitle}>AI 解读（自带密钥）</h2>
-        <p className={TEXT.caption}>
-          仅解读上方确定性结果，不产生或修改任何数值。密钥只在本次请求中使用，不存储、不上报。
-        </p>
-      </div>
+      <h2 className={TEXT.sectionTitle}>AI 解读（自带密钥）</h2>
 
-      {!hasSnapshot ? (
-        <p className={`${TEXT.bodySm} rounded-sm border border-bazi-border-soft bg-bazi-surface-muted p-4`}>
-          请先生成命盘，再选择一个周期请求解读。
+      {boundaryBlocked ? (
+        <p
+          className={`${TEXT.bodySm} rounded-sm border border-bazi-warning bg-bazi-warning-soft p-4`}
+          role="alert"
+        >
+          真太阳时修正跨越了日界或时辰，请先在出生信息中勾选确认，再请求 AI 解读。
         </p>
-      ) : (
-        <>
-          {boundaryBlocked ? (
-            <p
-              className={`${TEXT.bodySm} rounded-sm border border-bazi-warning bg-bazi-warning-soft p-4`}
-              role="alert"
-            >
-              真太阳时修正跨越了日界或时辰，请先在出生信息中勾选确认，再请求 AI 解读。
-            </p>
-          ) : null}
+      ) : null}
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="模型供应商" htmlFor="ai-provider">
               <Select
                 id="ai-provider"
@@ -80,7 +69,7 @@ export function AnalysisPanel({
                 }))}
               />
             </Field>
-            <Field label="模型标识" helper={`常用：${PROVIDER_PRESETS[provider].models.join("、")}`} htmlFor="ai-model">
+            <Field label="模型标识" htmlFor="ai-model">
               <Input
                 id="ai-model"
                 type="text"
@@ -107,6 +96,15 @@ export function AnalysisPanel({
               onChange={(event) => setApiKey(event.target.value)}
             />
           </Field>
+          <a
+            href={activePreset.apiKeyUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={`${TEXT.bodySm} inline-flex min-h-touch w-fit items-center gap-1 text-bazi-link hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bazi-primary`}
+          >
+            获取 {activePreset.label} API Key
+            <ExternalLink className="size-4" aria-hidden />
+          </a>
 
           <Field
             label="想重点了解的问题（可选）"
@@ -138,8 +136,6 @@ export function AnalysisPanel({
           ) : null}
 
           {state.output ? <AnalysisResult output={state.output} /> : null}
-        </>
-      )}
     </section>
   );
 }
@@ -160,6 +156,7 @@ function AnalysisResult({ output }: { output: AnalysisOutput }) {
         <h3 className={TEXT.panelTitle}>AI 解读（非计算结果）</h3>
       </header>
       <p className={TEXT.bodyLg}>{output.summary}</p>
+      <CitationList ids={output.summaryRuleIds} />
 
       <div className="flex flex-col gap-3">
         {output.dimensionInterpretations.map((item) => (
@@ -168,6 +165,7 @@ function AnalysisResult({ output }: { output: AnalysisOutput }) {
               {DIMENSION_LABELS[item.dimension]}
             </h4>
             <p className={TEXT.bodySm}>{item.interpretation}</p>
+            <CitationList ids={item.ruleIds} />
           </div>
         ))}
       </div>
@@ -194,6 +192,7 @@ function AnalysisResult({ output }: { output: AnalysisOutput }) {
       <div>
         <h4 className={TEXT.cardTitle}>所选周期解读</h4>
         <p className={TEXT.body}>{output.selectedPeriod.explanation}</p>
+        <CitationList ids={output.selectedPeriod.ruleIds} />
       </div>
 
       <footer className="flex items-start gap-2 rounded-sm bg-bazi-surface-muted p-3">
@@ -207,5 +206,13 @@ function AnalysisResult({ output }: { output: AnalysisOutput }) {
         </p>
       </footer>
     </article>
+  );
+}
+
+function CitationList({ ids }: { ids: string[] }) {
+  return (
+    <p className={`${TEXT.micro} mt-1 break-all text-bazi-ink-muted`}>
+      规则依据：{ids.join(" · ")}
+    </p>
   );
 }

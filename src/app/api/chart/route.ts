@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { BirthInputSchema, normalizeBirthInput } from "@/domain/bazi/normalize";
 import { daysBetween } from "@/domain/bazi/calendar";
-import { buildChartSnapshot } from "@/domain/fortune/snapshot";
-import { DIMENSION_KEYS } from "@/domain/fortune/types";
-import { RANGE_LIMITS, RangeTooLargeError } from "@/domain/fortune/series";
+import { calculateBaziSnapshot } from "@/domain/bazi/snapshot";
+import { DIMENSION_KEYS } from "@/domain/bazi/contract";
+import { RANGE_LIMITS, RangeTooLargeError } from "@/domain/bazi/projection";
 
 export const runtime = "nodejs";
 
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   try {
     const { input, range, dimension, resolution } = parsed.data;
-    const snapshot = buildChartSnapshot({
+    const snapshot = calculateBaziSnapshot({
       input: normalizeBirthInput(input),
       range,
       dimension,

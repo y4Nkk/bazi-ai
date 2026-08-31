@@ -6,29 +6,32 @@ import type { AnalyzeSelection } from "../src/ai/schema";
 
 const VALID_OUTPUT = {
   summary: "这是一段长度足够的整体解读，说明命盘结构与当前周期的关系，语气平和。",
+  summaryRuleIds: ["ZHI_LIUHE:午未|流年|流年|原局"],
   dimensionInterpretations: [
-    { dimension: "career", interpretation: "事业层面受官星与印星共同影响，稳中有进。" },
-    { dimension: "wealth", interpretation: "财星得地，适合稳健经营，不宜冒进。" },
+    { dimension: "career", interpretation: "事业层面受官星与印星共同影响，稳中有进。", ruleIds: ["ZHI_LIUHE:午未|流年|流年|原局"] },
+    { dimension: "wealth", interpretation: "财星得地，适合稳健经营，不宜冒进。", ruleIds: ["ZHI_LIUHE:午未|流年|流年|原局"] },
   ],
   opportunities: ["顺势巩固专业能力", "维持既有合作关系"],
   cautions: ["避免过度承诺", "注意节奏与休息"],
   selectedPeriod: {
     explanation:
       "所选周期的指数由引擎给出，主要受地支六合与三合因子推动，整体温和向上，属于平稳期。",
+    ruleIds: ["ZHI_LIUHE:午未|流年|流年|原局"],
   },
   disclaimer: "本解读属于传统文化与娱乐性质，不构成任何现实决策依据。",
 };
 
 const VALID_SELECTION: AnalyzeSelection = {
   snapshotKey: "0123456789abcdef",
-  engineVersion: "1.0.0",
-  scoringProfileVersion: "scoring-v1",
+  algorithmVersion: "zp-1.0.0",
   chartGender: "male",
   timeStandard: "civil",
   natalPillars: ["庚午", "辛巳", "庚辰", "癸未"],
   dayMaster: "庚",
   dayMasterElement: "金",
   luckDirection: "顺行",
+  primaryStructure: "七杀格",
+  favorableElements: ["土", "金"],
   selectedPeriod: {
     resolution: "day",
     dimension: "overall",
@@ -37,7 +40,7 @@ const VALID_SELECTION: AnalyzeSelection = {
     high: 67,
     low: 54,
     close: 57,
-    factors: ["ZHI_LIUHE:午未", "KE_DM:火克金"],
+    reasons: [{ id: "ZHI_LIUHE:午未|流年|流年|原局", code: "ZHI_LIUHE:午未", label: "地支六合", polarity: "support", direction: 1, temporalLayer: "流年", domainRelevance: ["overall", "relationship"], subjects: ["流年", "原局"] }],
   },
   boundaryChanged: false,
   boundaryAcknowledged: false,
@@ -73,6 +76,20 @@ describe("AnalysisOutput schema", () => {
 describe("AnalyzeSelection schema", () => {
   it("accepts a valid selection", () => {
     expect(AnalyzeSelectionSchema.safeParse(VALID_SELECTION).success).toBe(true);
+  });
+
+  it("allows a name as salutation metadata only", () => {
+    const selection = { ...VALID_SELECTION, subjectName: "王小明" };
+    expect(AnalyzeSelectionSchema.safeParse(selection).success).toBe(true);
+    expect(buildUserPrompt(selection)).toContain("命主称呼：王小明（仅用于称呼，不是排盘或判断依据）");
+  });
+
+  it("rejects the removed dual-version fields and legacy reason list", () => {
+    expect(AnalyzeSelectionSchema.safeParse({
+      ...VALID_SELECTION,
+      engineVersion: "1.0.0",
+      scoringProfileVersion: "legacy",
+    }).success).toBe(false);
   });
 
   it("requires boundary acknowledgement when the boundary changed", () => {

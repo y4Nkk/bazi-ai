@@ -12,7 +12,10 @@ import {
   branchIndexOf,
   stemIndexOf,
 } from "./constants";
-import type { CalendarFacts } from "./types";
+import type { CalendarFacts } from "./contract";
+
+/** Pinned to the installed lunar-typescript facts implementation. */
+export const CALENDAR_MODEL_REVISION = "lunar-typescript-1.8.6";
 
 const DAY_ANCHOR_DATE = "2000-01-01";
 const DAY_MS = 86_400_000;
@@ -21,8 +24,8 @@ const MINUTE_MS = 60_000;
 export function solarOf(localDateTime: string): Solar {
   const [datePart, timePart] = localDateTime.split("T");
   const [year, month, day] = datePart.split("-").map(Number);
-  const [hour, minute] = timePart.split(":").map(Number);
-  return Solar.fromYmdHms(year, month, day, hour, minute, 0);
+  const [hour, minute, second = 0] = timePart.split(":").map(Number);
+  return Solar.fromYmdHms(year, month, day, hour, minute, second);
 }
 
 export function calendarFactsOf(localDateTime: string): CalendarFacts {
@@ -41,7 +44,7 @@ export function calendarFactsOf(localDateTime: string): CalendarFacts {
 }
 
 function formatSolar(solar: Solar): string {
-  return solar.toYmdHms().replace(" ", "T").slice(0, 16);
+  return solar.toYmdHms().replace(" ", "T");
 }
 
 /* ------------------------------------------------------------------ */
@@ -164,11 +167,11 @@ export function buildSegmentTable(rangeStart: string, rangeEnd: string): Segment
 }
 
 function shiftMinute(localDateTime: string, minutes: number): string {
-  const shifted = new Date(Date.parse(`${localDateTime}:00Z`) + minutes * MINUTE_MS);
+  const shifted = new Date(Date.parse(`${localDateTime}${localDateTime.length === 16 ? ":00" : ""}Z`) + minutes * MINUTE_MS);
   const pad = (n: number) => String(n).padStart(2, "0");
   return (
     `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(shifted.getUTCDate())}` +
-    `T${pad(shifted.getUTCHours())}:${pad(shifted.getUTCMinutes())}`
+    `T${pad(shifted.getUTCHours())}:${pad(shifted.getUTCMinutes())}:${pad(shifted.getUTCSeconds())}`
   );
 }
 

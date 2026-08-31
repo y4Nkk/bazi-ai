@@ -35,6 +35,7 @@ describe("luck-cycle direction", () => {
 
   it("reports the start moment deterministically", () => {
     const info = luckInfoOf("1984-06-01T10:00", "male");
-    expect(info.startDateTime).toBe("1985-11-21T10:00");
+    expect(info.startDateTime).toBe("1985-11-21T10:00:00");
+    expect(info.cycles[1].startAgeDetail).toEqual({ years: 1, months: 5, days: 20 });
   });
 });

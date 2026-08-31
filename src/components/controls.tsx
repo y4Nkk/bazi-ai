@@ -118,7 +118,8 @@ export function Field({
   );
 }
 
-const CONTROL_SURFACE =
+/** Shared control-surface treatment (Input/Textarea/Select/DatePicker triggers). */
+export const CONTROL_SURFACE =
   "w-full min-w-0 rounded-sm border border-bazi-input bg-bazi-surface text-body-sm text-bazi-ink outline-none transition-[border-color] duration-fast placeholder:text-bazi-ink-placeholder focus-visible:ring-2 focus-visible:ring-bazi-primary aria-[invalid=true]:border-bazi-danger disabled:cursor-not-allowed disabled:opacity-50";
 
 /** SpiralCoder Input (surface appearance). */
@@ -184,7 +185,13 @@ export function Checkbox({
         aria-hidden="true"
         className="flex size-5 flex-none items-center justify-center rounded-control border border-bazi-border-strong bg-bazi-surface text-bazi-primary-foreground shadow-control transition duration-fast ease-smooth-out group-active:scale-95 motion-reduce:transition-none peer-checked:border-bazi-primary peer-checked:bg-bazi-primary peer-checked:shadow-control-checked peer-focus-visible:ring-2 peer-focus-visible:ring-bazi-primary group-hover:border-bazi-primary/62"
       >
-        {checked ? <Check className="size-3.5" strokeWidth={3} aria-hidden /> : null}
+        <Check
+          strokeWidth={3}
+          aria-hidden
+          className={`size-3.5 transition-[opacity,transform] duration-fast ease-spring motion-reduce:transition-none ${
+            checked ? "scale-100 opacity-100" : "scale-50 opacity-0"
+          }`}
+        />
       </span>
       {children ? <span className="min-w-0">{children}</span> : null}
     </label>
@@ -218,18 +225,21 @@ export function Select({
       <SelectPrimitive.Trigger
         id={id}
         aria-label={ariaLabel}
-        className={`${CONTROL_SURFACE} min-h-touch inline-flex justify-between gap-2 px-4 [&>span]:line-clamp-1`}
+        className={`${CONTROL_SURFACE} group min-h-touch inline-flex justify-between gap-2 px-4 [&>span]:line-clamp-1`}
       >
         <SelectPrimitive.Value />
         <SelectPrimitive.Icon>
-          <ChevronDown className="size-4 opacity-50" aria-hidden />
+          <ChevronDown
+            className="size-4 opacity-50 transition-transform duration-fast ease-smooth-out group-data-[state=open]:rotate-180 motion-reduce:transition-none"
+            aria-hidden
+          />
         </SelectPrimitive.Icon>
       </SelectPrimitive.Trigger>
       <SelectPrimitive.Portal>
         <SelectPrimitive.Content
           position="popper"
           sideOffset={4}
-          className="relative z-popup max-h-96 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-bazi-border-soft bg-bazi-surface-elevated text-bazi-ink shadow-bazi-lg backdrop-blur-xl"
+          className="relative z-popup max-h-96 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-bazi-border-soft bg-bazi-surface-elevated text-bazi-ink shadow-bazi-lg backdrop-blur-xl data-[state=open]:animate-select-in"
         >
           <SelectPrimitive.ScrollUpButton className="flex cursor-default items-center justify-center py-1">
             <ChevronUp className="size-4" aria-hidden />
@@ -243,7 +253,7 @@ export function Select({
               >
                 <SelectPrimitive.ItemText>{option.label}</SelectPrimitive.ItemText>
                 <SelectPrimitive.ItemIndicator>
-                  <Check className="size-4" aria-hidden />
+                  <Check className="size-4 animate-pop-in" aria-hidden />
                 </SelectPrimitive.ItemIndicator>
               </SelectPrimitive.Item>
             ))}

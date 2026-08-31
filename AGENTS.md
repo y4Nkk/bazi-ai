@@ -22,8 +22,7 @@ Before changing product behavior, read SPEC.md and MEMORY.md. Update MEMORY.md o
 
 ## Code ownership
 
-- src/domain/bazi owns input normalization, civil-time and true-solar-time conversion, and calendar facts.
-- src/domain/fortune owns the score profile, reason codes, timeline generation, and candle aggregation.
+- src/domain/bazi owns the complete deterministic contract: instant normalization, civil-time and true-solar-time conversion, calendar facts, natal facts, rules, relations, judgment, luck cycles, verdicts, timeline generation, and candle aggregation.
 - src/ai owns provider selection, prompts, output schema, and model invocation.
 - src/app/api only validates HTTP input and orchestrates the domain and AI layers.
 - src/components renders UI only. It must not recalculate chart facts or score candles.
@@ -34,9 +33,9 @@ Each domain contract has one owner. Do not retain deprecated fields, fallback ca
 ## Implementation rules
 
 - Use TypeScript with strict runtime validation at request boundaries.
-- Accept birth date, exact local time, traditional chart gender, timezone, longitude, latitude, and one chosen time standard. Do not treat four manually typed pillars as a sufficient V1 input.
+- Accept one offset-bearing birth instant (seconds required), traditional chart gender, timezone, longitude, and one chosen time standard. An optional name, place name, and latitude are display-only metadata and must not enter deterministic calculation or the algorithm hash; a name may be passed to BYOK only as a salutation. Do not treat four manually typed pillars as a sufficient V1 input.
 - The selected time standard is part of every calculation cache key and output snapshot.
-- Every result contains engineVersion and scoringProfileVersion.
+- Every result contains one `algorithmVersion` whose fingerprint/revisions cover the frozen rule catalog and calendar/astronomy model data.
 - A candle is an aggregation of lower-level deterministic points. It is not an LLM-generated visualization.
 - Default to fixed model-provider presets. The user enters a key and model identifier; do not accept arbitrary base URLs in a public route.
 - Keep a user API key in browser memory by default. It may traverse the analysis request for one invocation, but must never be persisted, logged, sent to analytics, or put in a Vercel environment variable.

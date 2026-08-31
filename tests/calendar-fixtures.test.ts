@@ -8,6 +8,7 @@ import {
   monthYearPillarsFor,
   solarOf,
 } from "../src/domain/bazi/calendar";
+import { natalChartOf } from "../src/domain/bazi/natal";
 
 const directEightChar = (localDateTime: string) =>
   solarOf(localDateTime).getLunar().getEightChar();
@@ -20,6 +21,12 @@ describe("solar-term boundaries", () => {
     // agrees with the library's own EightChar
     expect(directEightChar("2024-02-04T15:00").getYear()).toBe("癸卯");
     expect(directEightChar("2024-02-04T17:00").getYear()).toBe("甲辰");
+  });
+
+  it("keeps the solar-term second instead of switching at the displayed minute", () => {
+    const table = buildSegmentTable("2024-01-15", "2024-03-15");
+    expect(monthYearPillarsFor(table, "2024-02-04T16:27:06").yearGZ).toBe("癸卯");
+    expect(monthYearPillarsFor(table, "2024-02-04T16:27:07").yearGZ).toBe("甲辰");
   });
 
   it("reports Li Chun as the next or previous jieqi around the boundary", () => {
@@ -41,6 +48,21 @@ describe("leap month facts", () => {
   it("does not mark a regular month as leap", () => {
     const facts = calendarFactsOf("2023-05-05T12:00");
     expect(facts.lunarMonthLabel.startsWith("闰")).toBe(false);
+  });
+});
+
+describe("independent public calendar cross-check", () => {
+  it("matches the independently published civil-time four pillars for 1990-05-15 14:00", () => {
+    // The public calendar at https://huangli.100xgj.com/day/19900515 lists
+    // 庚午 辛巳 庚辰 癸未 for this civil date and its 未时.  This fixture
+    // intentionally stays offline: the external publication establishes the
+    // expected result, while the test protects our deterministic snapshot.
+    expect(natalChartOf("1990-05-15T14:00:00").pillars.map((pillar) => pillar.ganzhi)).toEqual([
+      "庚午",
+      "辛巳",
+      "庚辰",
+      "癸未",
+    ]);
   });
 });
 

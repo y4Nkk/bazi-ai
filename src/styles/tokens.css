@@ -76,6 +76,26 @@
   --bazi-ai-gradient-hover: linear-gradient(135deg, rgb(136 57 239 / 14%), rgb(114 135 253 / 12%), rgb(234 118 203 / 14%));
   --bazi-ai-gradient-rest: linear-gradient(135deg, rgb(136 57 239 / 0%), rgb(114 135 253 / 0%), rgb(234 118 203 / 0%));
 
+  /* Five-element data palette: each element has an ink anchor (base), a deep
+     anchor, and a 135° duotone gradient built from the pair. They encode
+     木火土金水 identity on chart characters, element labels, and distribution
+     bars only; they never carry UI state. */
+  --bazi-element-wood: 160 56% 32%;
+  --bazi-element-wood-deep: 170 58% 22%;
+  --bazi-element-fire: 8 72% 44%;
+  --bazi-element-fire-deep: 352 70% 36%;
+  --bazi-element-earth: 32 52% 38%;
+  --bazi-element-earth-deep: 26 46% 27%;
+  --bazi-element-metal: 44 64% 40%;
+  --bazi-element-metal-deep: 38 62% 29%;
+  --bazi-element-water: 216 72% 42%;
+  --bazi-element-water-deep: 226 70% 30%;
+  --bazi-gradient-wood: linear-gradient(135deg, hsl(var(--bazi-element-wood)), hsl(var(--bazi-element-wood-deep)));
+  --bazi-gradient-fire: linear-gradient(135deg, hsl(var(--bazi-element-fire)), hsl(var(--bazi-element-fire-deep)));
+  --bazi-gradient-earth: linear-gradient(135deg, hsl(var(--bazi-element-earth)), hsl(var(--bazi-element-earth-deep)));
+  --bazi-gradient-metal: linear-gradient(135deg, hsl(var(--bazi-element-metal)), hsl(var(--bazi-element-metal-deep)));
+  --bazi-gradient-water: linear-gradient(135deg, hsl(var(--bazi-element-water)), hsl(var(--bazi-element-water-deep)));
+
   --bazi-radius-sm: 12px;
   --bazi-radius-md: 16px;
   --bazi-radius-lg: 20px;
@@ -106,7 +126,15 @@
   --bazi-motion-slow: 400ms;
   --bazi-motion-ambient: 48s;
   --bazi-ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  /* Slight overshoot for small control state changes (check pop-in). */
+  --bazi-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --bazi-touch: 44px;
+
+  /* Scrollbar: slim pill thumb over a transparent track; colors derive from
+     ink-muted so dark mode flips automatically. */
+  --bazi-scrollbar-width: 10px;
+  --bazi-scrollbar-thumb: hsl(var(--bazi-ink-muted) / 0.35);
+  --bazi-scrollbar-thumb-hover: hsl(var(--bazi-ink-muted) / 0.55);
 
   --bazi-z-background: -10;
   --bazi-z-base: 0;
@@ -149,12 +177,78 @@
   --bazi-info-soft: 191 97% 77% / 0.16;
   --bazi-link: 216 100% 72%;
   --bazi-link-soft: 216 100% 72% / 0.16;
+  --bazi-element-wood: 158 50% 62%;
+  --bazi-element-wood-deep: 168 46% 44%;
+  --bazi-element-fire: 12 82% 66%;
+  --bazi-element-fire-deep: 350 74% 54%;
+  --bazi-element-earth: 34 56% 64%;
+  --bazi-element-earth-deep: 26 46% 46%;
+  --bazi-element-metal: 46 76% 66%;
+  --bazi-element-metal-deep: 40 58% 48%;
+  --bazi-element-water: 212 84% 72%;
+  --bazi-element-water-deep: 224 70% 54%;
   --bazi-border: 232 14% 40%;
   --bazi-border-soft: 232 14% 40% / 0.6;
   --bazi-border-strong: 231 15% 52%;
   --bazi-border-whisper: 60 30% 96% / 0.1;
   --bazi-input: 231 15% 52%;
   --bazi-shadow-glow: 0 0 0 1px rgb(248 248 242 / 12%), 0 12px 36px rgb(112 167 255 / 22%);
+}
+
+/* Global scrollbar: one treatment for the document and every scrollable
+   region (popups, listboxes, textareas). Firefox uses the standard
+   properties; Chromium uses the webkit pseudo-elements. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bazi-scrollbar-thumb) transparent;
+}
+
+::-webkit-scrollbar {
+  width: var(--bazi-scrollbar-width);
+  height: var(--bazi-scrollbar-width);
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--bazi-scrollbar-thumb);
+  border-radius: var(--bazi-radius-pill);
+  /* 2px transparent border clips the paint to a 6px pill inside the 10px gutter. */
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--bazi-scrollbar-thumb-hover);
+}
+
+/* Control state motion: opacity and transform only, driven by the motion
+   tokens above. The reduced-motion block collapses these to their final
+   frame. */
+@keyframes bazi-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bazi-select-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Ambient liquid-light field: transform-only motion; the reduced-motion block

@@ -1,19 +1,22 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "./app-shell";
-import { BirthForm, type BirthFormState } from "./birth-form";
+import { BirthForm, BirthSummary, type BirthFormState } from "./birth-form";
+import { Button } from "./controls";
 import { TrendChart } from "./trend-chart";
 import { PillarPanel } from "./pillar-panel";
 import { LuckPanel } from "./luck-panel";
 import { AnalysisPanel, type AnalysisState } from "./analysis-panel";
 import { TEXT } from "@/lib/typography";
 import { fetchAnalysis, fetchChartSnapshot } from "@/lib/client";
+import { loadWorkbenchCache, saveWorkbenchCache } from "@/lib/workbench-cache";
 import type { Place } from "@/lib/places";
 import { selectionFromSnapshot } from "@/ai/schema";
 import type { ProviderId } from "@/ai/providers";
 import type { BirthInput } from "@/domain/bazi/normalize";
-import type { ChartSnapshot, Dimension, Resolution, TrendRange } from "@/domain/fortune/types";
+import type { ChartSnapshot, Dimension, Resolution, TrendRange } from "@/domain/bazi/contract";
+import { birthInstantFromCivil, civilDateTimeOf } from "@/domain/bazi/astronomy";
 
 interface ChartControls {
   dimension: Dimension;
@@ -23,8 +26,10 @@ interface ChartControls {
 }
 
 const INITIAL_FORM: BirthFormState = {
+  subjectName: "",
   localDate: "",
   localTime: "",
+  utcOffset: "",
   chartGender: "male",
   timezone: "Asia/Shanghai",
   birthplace: "",
@@ -87,11 +92,64 @@ export function Workbench() {
   const [chartError, setChartError] = useState<string | null>(null);
   const [selectedCandle, setSelectedCandle] = useState(0);
   const [boundaryAcknowledged, setBoundaryAcknowledged] = useState(false);
+  /** Open while editing; collapses into the summary bar after a clean
+   * generation so the trend chart owns the first screen. A boundary
+   * warning keeps the form open for acknowledgement. */
+  const [formOpen, setFormOpen] = useState(true);
   const [analysis, setAnalysis] = useState<AnalysisState>({ status: "idle", output: null, error: null });
   const [lastInput, setLastInput] = useState<BirthInput | null>(null);
 
+  /** Restores the last cached result so a refresh loses neither the chart
+   * nor a paid AI analysis. Controls are rebuilt from the snapshot itself;
+   * the boundary acknowledgement is never cached — a boundary chart reopens
+   * the form for acknowledgement, exactly like a fresh generation would. */
+  useEffect(() => {
+    const cached = loadWorkbenchCache();
+    if (!cached) return;
+    const { snapshot } = cached;
+    const localDateTime = civilDateTimeOf(cached.input.timezone, cached.input.birthInstant);
+    setLastInput(cached.input);
+    setFormState({
+      subjectName: cached.input.subjectName ?? "",
+      localDate: localDateTime.slice(0, 10),
+      localTime: localDateTime.slice(11, 16),
+      utcOffset: cached.input.birthInstant.endsWith("Z") ? "+00:00" : cached.input.birthInstant.slice(-6),
+      chartGender: cached.input.chartGender,
+      timezone: cached.input.timezone,
+      birthplace: cached.input.birthplace ?? "",
+      longitude: String(cached.input.longitude),
+      latitude: String(cached.input.latitude),
+      timeStandard: cached.input.timeStandard,
+    });
+    setControls({
+      dimension: snapshot.series.dimension,
+      resolution: snapshot.series.resolution,
+      anchor: snapshot.series.range.start,
+    });
+    setSnapshot(snapshot);
+    setSelectedCandle(cached.selectedCandle);
+    setAnalysis(
+      cached.analysisOutput
+        ? { status: "done", output: cached.analysisOutput, error: null }
+        : { status: "idle", output: null, error: null },
+    );
+    setFormOpen(snapshot.boundary !== null);
+  }, []);
+
+  /** Persists every committed result tuple; runs after the restore effect so
+   * a cacheless first mount writes nothing (snapshot still null). */
+  useEffect(() => {
+    if (!snapshot || !lastInput) return;
+    saveWorkbenchCache({
+      input: lastInput,
+      snapshot,
+      selectedCandle,
+      analysisOutput: analysis.output,
+    });
+  }, [snapshot, lastInput, selectedCandle, analysis.output]);
+
   const loadChart = useCallback(
-    async (input: BirthInput | null, next: ChartControls) => {
+    async (input: BirthInput | null, next: ChartControls, collapseAfter = false) => {
       if (!input) return;
       setChartLoading(true);
       setChartError(null);
@@ -106,6 +164,7 @@ export function Workbench() {
         setSnapshot(nextSnapshot);
         setSelectedCandle(Math.floor(nextSnapshot.series.candles.length / 2));
         setAnalysis({ status: "idle", output: null, error: null });
+        if (collapseAfter && nextSnapshot.boundary == null) setFormOpen(false);
       } catch (error) {
         setChartError(error instanceof Error ? error.message : "排盘失败，请重试。");
       } finally {
@@ -121,19 +180,26 @@ export function Workbench() {
       setChartError("请先填写出生日期与时刻，再生成命盘。");
       return;
     }
+    let birthInstant: string;
+    try {
+      birthInstant = birthInstantFromCivil(formState.timezone, localDateTime, formState.utcOffset || undefined);
+    } catch (error) {
+      setChartError(error instanceof Error ? error.message : "出生时刻无法解析，请重试。");
+      return;
+    }
     const input: BirthInput = {
-      calendar: "gregorian",
-      localDateTime,
+      ...(formState.subjectName.trim() ? { subjectName: formState.subjectName.trim() } : {}),
+      ...(formState.birthplace.trim() ? { birthplace: formState.birthplace.trim() } : {}),
+      birthInstant,
       chartGender: formState.chartGender,
       timezone: formState.timezone,
-      birthplace: formState.birthplace,
       longitude: Number(formState.longitude),
       latitude: Number(formState.latitude),
       timeStandard: formState.timeStandard,
     };
     setLastInput(input);
     setBoundaryAcknowledged(false);
-    void loadChart(input, controls);
+    void loadChart(input, controls, true);
   }, [formState, controls, loadChart]);
 
   const changeControls = useCallback(
@@ -196,7 +262,27 @@ export function Workbench() {
   const anchorYear = useMemo(() => Number(rangeFor(controls.anchor, controls.resolution).start.slice(0, 4)), [controls.anchor, controls.resolution]);
 
   return (
-    <AppShell>
+    <AppShell
+      headerAction={
+        formOpen ? (
+          // Distinct keys: React must replace (not mutate) this node, or a
+          // click in flight can activate after the swap turns it into a
+          // submit button and re-submits the form.
+          <Button key="generate" type="submit" form="birth-form" className="min-h-touch px-5">
+            生成命盘
+          </Button>
+        ) : (
+          <Button
+            key="edit"
+            variant="secondary"
+            className="min-h-touch px-5"
+            onClick={() => setFormOpen(true)}
+          >
+            修改出生信息
+          </Button>
+        )
+      }
+    >
       {chartError ? (
         <p
           className={`${TEXT.bodySm} mb-6 rounded-sm border border-bazi-danger bg-bazi-danger-soft p-4`}
@@ -208,16 +294,20 @@ export function Workbench() {
 
       <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="flex min-w-0 flex-col gap-6">
-          <BirthForm
-            formState={formState}
-            onFieldChange={handleFieldChange}
-            onPlaceSelect={handlePlaceSelect}
-            onSubmit={handleSubmit}
-            loading={chartLoading}
-            snapshot={snapshot}
-            boundaryAcknowledged={boundaryAcknowledged}
-            onBoundaryAckChange={setBoundaryAcknowledged}
-          />
+          {!formOpen && lastInput ? (
+            <BirthSummary input={lastInput} onEdit={() => setFormOpen(true)} />
+          ) : (
+            <BirthForm
+              formState={formState}
+              onFieldChange={handleFieldChange}
+              onPlaceSelect={handlePlaceSelect}
+              onSubmit={handleSubmit}
+              loading={chartLoading}
+              snapshot={snapshot}
+              boundaryAcknowledged={boundaryAcknowledged}
+              onBoundaryAckChange={setBoundaryAcknowledged}
+            />
+          )}
           <TrendChart
             candles={snapshot?.series.candles ?? []}
             dimension={controls.dimension}
@@ -232,29 +322,30 @@ export function Workbench() {
             }
             loading={chartLoading}
           />
+          {snapshot ? <PillarPanel snapshot={snapshot} /> : null}
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-6" aria-label="命盘详情与解读">
+        <aside className="flex min-w-0 flex-col gap-6" aria-label="大运与解读">
           {snapshot ? (
             <>
-              <PillarPanel snapshot={snapshot} />
               <LuckPanel snapshot={snapshot} anchorYear={anchorYear} />
+              <AnalysisPanel
+                boundaryBlocked={boundaryBlocked}
+                selectedTimestamp={snapshot.series.candles[selectedCandle]?.timestamp ?? null}
+                selectedResolution={snapshot.series.resolution ?? null}
+                selectedDimension={snapshot.series.dimension ?? null}
+                state={analysis}
+                onRequest={(args) => void handleAnalyze(args)}
+              />
             </>
           ) : (
             <section className="flex min-h-48 flex-col items-center justify-center gap-2 rounded-lg border border-bazi-border bg-bazi-surface p-6 text-center">
-              <p className={TEXT.bodyLg}>命盘将在这里生成</p>
-              <p className={TEXT.caption}>四柱、五行、大运与 AI 解读都在等待你的出生信息。</p>
+              <p className={TEXT.bodyLg}>大运与解读将在这里生成</p>
+              <p className={TEXT.caption}>
+                生成后可切换年、月、日粒度，查看四柱与大运，并请求 AI 解读。
+              </p>
             </section>
           )}
-          <AnalysisPanel
-            hasSnapshot={snapshot !== null}
-            boundaryBlocked={boundaryBlocked}
-            selectedTimestamp={snapshot?.series.candles[selectedCandle]?.timestamp ?? null}
-            selectedResolution={snapshot?.series.resolution ?? null}
-            selectedDimension={snapshot?.series.dimension ?? null}
-            state={analysis}
-            onRequest={(args) => void handleAnalyze(args)}
-          />
         </aside>
       </div>
     </AppShell>

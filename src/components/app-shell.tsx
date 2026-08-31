@@ -4,12 +4,20 @@ import type { ReactNode } from "react";
 import { BrandMark } from "./brand-mark";
 
 /**
- * App shell: translucent header with one primary action (the birth form
- * submit) and a slow liquid-light field entering from the page edges. The
- * field sits behind all content (z-background) and animates transform and
- * opacity only; prefers-reduced-motion collapses it to a static frame.
+ * App shell: translucent header with one primary action (passed in as
+ * headerAction — the birth form submit or the edit toggle, depending on
+ * the workbench state) and a slow liquid-light field entering from the
+ * page edges. The field sits behind all content (z-background) and
+ * animates transform and opacity only; prefers-reduced-motion collapses
+ * it to a static frame.
  */
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({
+  children,
+  headerAction,
+}: {
+  children: ReactNode;
+  headerAction?: ReactNode;
+}) {
   return (
     <div className="relative flex min-h-screen flex-col">
       <div aria-hidden className="pointer-events-none fixed inset-0 z-background overflow-hidden">
@@ -42,16 +50,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <p className="flex items-center gap-2 text-title-sm font-semibold tracking-tight text-bazi-ink">
             <BrandMark className="size-8 text-bazi-primary" />
             命轨
-            <span className="ml-1 font-normal text-bazi-ink-muted">Bazi AI</span>
           </p>
-          <p className="hidden text-meta text-bazi-ink-muted sm:block">八字趋势工作台</p>
-          <button
-            type="submit"
-            form="birth-form"
-            className="ml-auto min-h-touch rounded-sm bg-bazi-primary px-5 text-body-sm font-medium text-bazi-primary-foreground transition duration-fast hover:opacity-90 active:scale-[0.95]"
-          >
-            生成命盘
-          </button>
+          {headerAction ? <div className="ml-auto">{headerAction}</div> : null}
         </div>
       </header>
 

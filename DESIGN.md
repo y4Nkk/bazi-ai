@@ -48,6 +48,7 @@ All values are defined in `src/styles/tokens.css`. The authoritative semantic fa
 | Reading ink | `ink`, `ink-secondary`, `ink-muted`, `ink-placeholder` | Text hierarchy |
 | Action and AI | `primary`, `secondary`, `tertiary`, `ai-accent`, AI/brand gradients | Action is blue; AI uses violet, lavender, pink |
 | Meaning | `success`, `warning`, `danger`, `info`, `link` plus soft variants | Explicit states and links |
+| Five-element data | `element-wood/fire/earth/metal/water` anchors and `gradient-wood…water` duotones | 木火土金水 identity on pillar characters, element labels, and distribution bars; never UI state |
 | Structure | `border`, `border-soft`, `border-strong`, `input` | Hairlines, selected controls, inputs |
 | Geometry | `radius-sm` through `radius-3xl`, `radius-tail`, `radius-pill` | Single rounded ladder |
 | Depth | `shadow-sm` through `shadow-xl`, `shadow-glow` | Flat cards through floating layers |
@@ -57,9 +58,11 @@ All values are defined in `src/styles/tokens.css`. The authoritative semantic fa
 ### Color and material use
 
 - Main canvas: `bg-bazi-background`; standard panel: `bg-bazi-surface`; raised dialog/popover: `bg-bazi-surface-elevated` plus `border-bazi-border`.
+- Scrollbars use the global treatment from `tokens.css` everywhere: a slim pill thumb derived from ink-muted over a transparent track (Firefox standard properties plus Chromium pseudo-elements). Screens never style scrollbars locally.
 - Primary action, active range, and selected chart band: `bazi-primary` and its tinted surface. Never use the AI gradient for deterministic chart values.
 - AI invocation, streaming progress, and AI-result framing can use `--bazi-ai-gradient` or `--bazi-ai-gradient-active`. AI content remains clearly labelled and secondary to its deterministic source factors.
 - Candle direction may use success and danger only when a legend explains it. Its metric is always `传统命理趋势指数`; never label it price, return, probability, or trading volume.
+- Five-element identity is data, not state: large 干支 characters and 五行分布 bars use the `--bazi-gradient-wood/fire/earth/metal/water` duotones; inline element characters use the matching solid `text-bazi-element-*` ink. These colors never encode UI state and never borrow the action-blue or AI spectrum.
 - Dark mode uses the matching dark tokens from `tokens.css`. A true media void is the only valid pure-black surface.
 
 ### Geometry, space, and depth
@@ -101,11 +104,11 @@ Use a 980px reading/report ceiling, 24px desktop gutters, and 16px phone gutters
 
 ## Components
 
-Global form controls — `Input`, `Textarea`, `Checkbox`, and `Select` — are ported from SpiralCoder's `web/src/components/ui` set, re-tokenized to `--bazi-*`, and sized to the 44px touch contract. They live in `src/components/controls.tsx`; screens must use them instead of raw `<input>`, `<textarea>`, or `<select>` elements.
+Global form controls — `Input`, `Textarea`, `Checkbox`, `Select`, the popover `DatePicker`, and its popover `TimePicker` companion — are ported from SpiralCoder's `web/src/components/ui` set (the `TimePicker` is a local counterpart matching the `DatePicker` treatment), re-tokenized to `--bazi-*`, and sized to the 44px touch contract. They live in `src/components/controls.tsx` plus `src/components/date-picker.tsx`, `src/components/time-picker.tsx`, and `src/components/popover.tsx`; screens must use them instead of raw `<input>`, `<textarea>`, `<select>`, or native date/time inputs. State transitions are motion-token driven: the checkbox check pops in with the spring ease, the select chevron rotates on open, the select popup enters with `animate-select-in`, and the selected option's check pops in — all opacity/transform only, collapsing to their final frame under reduced motion. The DatePicker opens a zh-CN calendar in the shared raised-glass popover (day and nav buttons at 44px with a visible focus ring, a caption that opens a year panel for quick year jumps, 今天/清除 actions); it emits ISO `YYYY-MM-DD` or null, so empty dates stay catchable by explicit submit validation. The TimePicker keeps the same trigger and popover family for `HH:mm` (44px 时/分 option columns, 此刻/完成/清除 actions) and emits `HH:mm` or null.
 
 ### App shell and form
 
-The header is pearl or translucent glass with a thin lower border, product mark, current page label, and one primary action. The birth form is a calculation instrument: group civil time, birthplace, and calculation standard; show factual helper copy; use 44px controls; and present real segmented civil/true-solar selection. If the correction changes day or shichen, show the boundary warning inline and require acknowledgement before AI analysis.
+The header is pearl or translucent glass with a thin lower border, product mark, current page label, and one primary action. The birth form is a calculation instrument: group civil time, birthplace, and calculation standard; show factual helper copy; use 44px controls; and present real segmented civil/true-solar selection. After a clean generation the form collapses into a one-line birth summary with an edit toggle so the trend chart owns the first screen; a boundary warning keeps the form open for acknowledgement. If the correction changes day or shichen, show the boundary warning inline and require acknowledgement before AI analysis.
 
 ### Trend chart and factor data
 

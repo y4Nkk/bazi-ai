@@ -6,7 +6,7 @@ Bazi AI turns a user's birth information into a reproducible traditional BaZi ca
 
 ## V1 user flow
 
-1. The user provides Gregorian birth date, exact local time, traditional chart gender, birthplace, timezone, longitude, latitude, and a time standard.
+1. The UI optionally records the user's name and birthplace for display, resolves the Gregorian local date/time to one offset-bearing birth instant, then submits that instant, traditional chart gender, timezone, longitude, latitude, and a time standard. Only name, birthplace, and latitude are display metadata; they do not affect deterministic facts.
 2. The calculation endpoint returns the civil time, true solar time, correction amount, selected chart basis, natal pillars, luck cycles, and the requested trend-series window.
 3. The user switches yearly, monthly, or daily resolution and selects a period.
 4. The user optionally supplies a model-provider key and model identifier.
@@ -14,48 +14,50 @@ Bazi AI turns a user's birth information into a reproducible traditional BaZi ca
 
 ## Input contract
 
-BirthInput is the only V1 input contract:
+BirthInput is the only engine input contract:
 
-    calendar: gregorian
-    localDateTime: ISO local date and time
+    subjectName: optional display and AI-salutation metadata
+    birthplace: optional display metadata
+    birthInstant: ISO-8601 instant with seconds and an explicit UTC offset
     chartGender: male or female
     timezone: IANA timezone
-    birthplace: display name
     longitude: decimal degrees
-    latitude: decimal degrees
+    latitude: decimal degrees, display metadata
     timeStandard: civil or trueSolar
 
-The UI computes and shows both civil and true-solar candidates whenever possible, but each ChartSnapshot has exactly one selected timeStandard. If a correction changes the local day or shichen, the user must acknowledge the boundary before requesting AI analysis.
+The declared offset must equal the IANA historical offset at `birthInstant`. The UI resolves ordinary local clocks automatically, requires an explicit offset in a DST overlap, and rejects a DST-gap clock. Name, place name, and latitude are display-only metadata and never enter the engine hash or any deterministic calculation. A name may be sent to the selected BYOK provider only as a salutation. The UI computes and shows both civil and true-solar candidates whenever possible, but each ChartSnapshot has exactly one selected timeStandard. If a correction changes the local day or shichen, the user must acknowledge the boundary before requesting AI analysis.
 
 Manual four-pillar input is out of scope. It cannot determine a unique Gregorian moment or a reliable luck-cycle start.
 
 ## Deterministic engine
 
-ChartSnapshot is created only by src/domain/bazi and src/domain/fortune:
+ChartSnapshot is created only by `src/domain/bazi` through `calculateBaziSnapshot`:
 
-    engineVersion
-    scoringProfileVersion
+    algorithmVersion
     normalized birth input
     civil-time candidate
     true-solar-time candidate
     selected natal chart
+    qi assessment and primary-structure judgment
     luck cycles
     requested trend series
 
 The engine must calculate:
 
 - Gregorian, lunar, and solar-term facts;
-- four pillars, hidden stems, ten gods, and element relation facts;
+- four pillars, hidden stems (本气/中气/余气), ten gods, twelve life stages, 纳音, 旬空, root grades, and element relation facts;
 - luck-cycle direction and start;
 - annual, monthly, daily, and shichen transit facts;
-- explicit factor codes for beneficial and challenging relations;
+- source-labelled rule evidence plus an adjudicated relation graph for favorable, challenging, and contextual relations;
 - scores for overall, career, wealth, relationship, children, family, health, and study.
 
-The initial scoring owner is ScoringProfileV1. It uses a documented and versioned traditional-rule rubric. A profile change increments scoringProfileVersion; it never silently changes historical output.
+ZP-1 is the only interpretive profile. It evaluates month command (including the exact position inside its 节 interval), hidden-stem roots, exposed stems, five-element support and pressure, climate, flow, primary structure, favorable/adverse elements, and the active luck pillar before projecting a trend. `src/domain/bazi/rules.ts` owns the closed rule catalog and its fingerprint; `relations.ts` owns relation adjudication; `verdict.ts` owns domain evidence. A visible combination is explicitly `formed`, `blocked`, `contested`, `untransformed`, or `broken`; half-combinations and arch-combinations are distinct untransformed edges, not concealed three-combinations. The old base-score and weighted-reason model does not exist.
+
+Every rule conclusion records its stable rule identifier, source layer, subjects, semantic polarity, numeric direction (`-1 | 0 | 1`), severity, and relevant domains. A trend value is a bounded visualization of those activated rules, not the source of a conclusion. The projection formula is fixed as `round(50 + 45 × (positive - negative) / (positive + negative + 1))`, then bounded to 5–95. `algorithmVersion` includes the frozen rule-catalog fingerprint plus the pinned astronomy/calendar model revisions; the selected time standard is included in the snapshot key and all temporal calculations.
 
 ## Trend-series contract
 
-The smallest series point is a shichen. It has timestamp, per-dimension scores, factor codes, and change intensity.
+The smallest series point is a shichen. It has timestamp, per-dimension projection values, source-labelled rule evidence, and change intensity. The active luck pillar participates alongside annual, monthly, daily, and shichen transit pillars.
 
 Daily candles aggregate twelve shichen points:
 
@@ -64,7 +66,7 @@ Daily candles aggregate twelve shichen points:
     high  = maximum shichen score
     low   = minimum shichen score
 
-Monthly candles aggregate daily candles. Yearly candles aggregate monthly candles. The aggregation implementation has one owner and must preserve low <= open, close <= high at every resolution.
+Monthly candles aggregate daily candles. Yearly candles aggregate monthly candles. The aggregation implementation has one owner and must preserve low <= open, close <= high at every resolution. The overall value is calculated from general rule evidence; it is never the mean of the seven other dimensions.
 
 The chart label is 传统命理趋势指数, ranged from 0 to 100. It is not a market price, return, probability, diagnosis, or guarantee.
 
@@ -112,5 +114,7 @@ If a later requirement introduces accounts, saved reports, or share links, add o
 - Every aggregate candle respects the OHLC invariant and agrees with its lower-level points.
 - The chart resolution switch preserves the selected dimension and selected time standard.
 - A malformed AI response is rejected rather than rendered.
-- AI output cannot change deterministic scores or factors.
+- AI output cannot change deterministic projections, judgment, or rule evidence.
+- A period's active luck pillar must affect its deterministic rule evidence and projection.
+- No legacy scoring configuration, fixed base score, or legacy reason contract remains in source or API output.
 - No API key appears in source, persisted storage by default, logs, test snapshots, or returned response bodies.

@@ -1,4 +1,4 @@
-/** Shared BaZi vocabulary used by calendar facts, charts, and factors. */
+/** Shared BaZi vocabulary used by calendar facts, charts, and ZP-1 rules. */
 
 export const HEAVENLY_STEMS = [
   "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸",
