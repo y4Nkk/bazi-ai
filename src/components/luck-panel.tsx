@@ -22,13 +22,14 @@ export function LuckPanel({
           {luck.startDateTime.replace("T", " ")} {luck.startAgeLabel}，{luck.directionLabel}。
         </p>
       </div>
-      <ol className="flex flex-wrap gap-2">
+      {/* 7rem 轨道下限保证「YYYY–YYYY · NN岁」在 3 列最窄轨道（112px）仍单行。 */}
+      <ol className="grid grid-cols-[repeat(auto-fill,minmax(7rem,1fr))] gap-2">
         {luck.cycles.map((cycle) => {
           const active = anchorYear >= cycle.startYear && anchorYear <= cycle.endYear;
           return (
             <li
               key={cycle.index}
-              className={`flex min-h-touch min-w-24 flex-col items-center justify-center rounded-sm border px-3 py-2 ${
+              className={`flex min-h-touch flex-col items-center justify-center rounded-sm border px-2 py-2 ${
                 active
                   ? "border-bazi-primary bg-bazi-surface-tinted"
                   : "border-bazi-border bg-bazi-surface-muted"

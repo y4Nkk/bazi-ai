@@ -118,9 +118,11 @@ export function Field({
   );
 }
 
-/** Shared control-surface treatment (Input/Textarea/Select/DatePicker triggers). */
+/** Shared control-surface treatment (Input/Textarea/Select/DatePicker/TimePicker
+ * triggers). Width is not part of the surface: each control states its own, so
+ * inline triggers can pass w-auto without fighting a baked-in w-full. */
 export const CONTROL_SURFACE =
-  "w-full min-w-0 rounded-sm border border-bazi-input bg-bazi-surface text-body-sm text-bazi-ink outline-none transition-[border-color] duration-fast placeholder:text-bazi-ink-placeholder focus-visible:ring-2 focus-visible:ring-bazi-primary aria-[invalid=true]:border-bazi-danger disabled:cursor-not-allowed disabled:opacity-50";
+  "min-w-0 rounded-sm border border-bazi-input bg-bazi-surface text-body-sm text-bazi-ink outline-none transition-[border-color] duration-fast placeholder:text-bazi-ink-placeholder focus-visible:ring-2 focus-visible:ring-bazi-primary aria-[invalid=true]:border-bazi-danger disabled:cursor-not-allowed disabled:opacity-50";
 
 /** SpiralCoder Input (surface appearance). */
 export function Input({
@@ -132,7 +134,7 @@ export function Input({
     <input
       type={type}
       {...rest}
-      className={`${CONTROL_SURFACE} min-h-touch px-4 ${className}`}
+      className={`${CONTROL_SURFACE} min-h-touch w-full px-4 ${className}`}
     />
   );
 }
@@ -145,7 +147,7 @@ export function Textarea({
   return (
     <textarea
       {...rest}
-      className={`${CONTROL_SURFACE} min-h-touch resize-y px-4 py-3 ${className}`}
+      className={`${CONTROL_SURFACE} min-h-touch w-full resize-y px-4 py-3 ${className}`}
     />
   );
 }
@@ -225,7 +227,7 @@ export function Select({
       <SelectPrimitive.Trigger
         id={id}
         aria-label={ariaLabel}
-        className={`${CONTROL_SURFACE} group min-h-touch inline-flex justify-between gap-2 px-4 [&>span]:line-clamp-1`}
+        className={`${CONTROL_SURFACE} group min-h-touch w-full inline-flex justify-between gap-2 px-4 [&>span]:line-clamp-1`}
       >
         <SelectPrimitive.Value />
         <SelectPrimitive.Icon>

@@ -9,7 +9,7 @@ export function BrandMark({ className = "size-6" }: { className?: string }) {
       viewBox="5 5 54 54"
       className={className}
       role="img"
-      aria-label="命轨 Bazi AI 标志"
+      aria-label="命轨标志"
     >
       <g className="fill-current">
         <rect x="9.5" y="30" width="3" height="22" rx={1.5} />

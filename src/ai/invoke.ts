@@ -8,7 +8,12 @@ import { buildSystemPrompt, buildUserPrompt } from "./prompt";
 import { PROVIDER_ENDPOINTS, type ProviderId } from "./providers";
 
 const TIMEOUT_MS = 60_000;
-const MAX_TOKENS = 2000;
+
+/**
+ * Anthropic 的 Messages API 必填 max_tokens 且无默认值；64K 是预设模型中
+ * 最低的官方最大输出（Haiku 4.5，Sonnet 5 / Opus 5 为 128K）。
+ */
+const ANTHROPIC_REQUIRED_MAX_TOKENS = 64_000;
 
 export type AiErrorCode = "PROVIDER_ERROR" | "INVALID_OUTPUT" | "TIMEOUT";
 
@@ -81,10 +86,6 @@ async function fetchProvider(args: InvokeArgs, signal: AbortSignal): Promise<Res
         },
         body: JSON.stringify({
           model,
-          // GPT-5.x 系列不接受 max_tokens；DeepSeek 走 OpenAI 兼容接口，保留 max_tokens。
-          ...(provider === "openai"
-            ? { max_completion_tokens: MAX_TOKENS }
-            : { max_tokens: MAX_TOKENS }),
           response_format: { type: "json_object" },
           messages: [
             { role: "system", content: system },
@@ -103,7 +104,7 @@ async function fetchProvider(args: InvokeArgs, signal: AbortSignal): Promise<Res
         },
         body: JSON.stringify({
           model,
-          max_tokens: MAX_TOKENS,
+          max_tokens: ANTHROPIC_REQUIRED_MAX_TOKENS,
           system,
           messages: [{ role: "user", content: user }],
         }),
@@ -120,7 +121,6 @@ async function fetchProvider(args: InvokeArgs, signal: AbortSignal): Promise<Res
           systemInstruction: { parts: [{ text: system }] },
           contents: [{ role: "user", parts: [{ text: user }] }],
           generationConfig: {
-            maxOutputTokens: MAX_TOKENS,
             responseMimeType: "application/json",
           },
         }),
@@ -203,7 +203,7 @@ export function parseAndValidate(raw: string, selection?: AnalyzeSelection): Ana
 }
 
 function assertCitations(output: AnalysisOutput, selection: AnalyzeSelection): void {
-  const allowed = new Set(selection.selectedPeriod.reasons.map((reason) => reason.id));
+  const allowed = new Set(selection.selectedPeriod.period.reasons.map((reason) => reason.id));
   const cited = [
     ...output.summaryRuleIds,
     ...output.dimensionInterpretations.flatMap((item) => item.ruleIds),

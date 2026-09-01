@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { ExternalLink } from "lucide-react";
-import { Button, Field, Input, Select, Textarea } from "./controls";
+import { Button, Checkbox, Field, Input, Select, Textarea } from "./controls";
 import { TEXT } from "@/lib/typography";
 import { DEFAULT_PROVIDER_ID, PROVIDER_PRESETS, type ProviderId } from "@/ai/providers";
 import type { AnalysisOutput } from "@/ai/schema";
-import { DIMENSION_LABELS, RESOLUTION_LABELS, type Dimension } from "@/domain/bazi/contract";
+import { DIMENSION_LABELS, RESOLUTION_LABELS, type BoundaryNotice, type Dimension } from "@/domain/bazi/contract";
 
 export interface AnalysisState {
   status: "idle" | "loading" | "done" | "error";
@@ -15,14 +15,18 @@ export interface AnalysisState {
 }
 
 export function AnalysisPanel({
-  boundaryBlocked,
+  boundary,
+  boundaryAcknowledged,
+  onBoundaryAckChange,
   selectedTimestamp,
   selectedResolution,
   selectedDimension,
   state,
   onRequest,
 }: {
-  boundaryBlocked: boolean;
+  boundary: BoundaryNotice | null;
+  boundaryAcknowledged: boolean;
+  onBoundaryAckChange: (acknowledged: boolean) => void;
   selectedTimestamp: string | null;
   selectedResolution: string | null;
   selectedDimension: Dimension | null;
@@ -34,6 +38,7 @@ export function AnalysisPanel({
   const [apiKey, setApiKey] = useState("");
   const [question, setQuestion] = useState("");
   const activePreset = PROVIDER_PRESETS[provider];
+  const boundaryBlocked = boundary !== null && !boundaryAcknowledged;
 
   const canRequest = !boundaryBlocked && apiKey.trim().length >= 8 && state.status !== "loading";
 
@@ -44,12 +49,28 @@ export function AnalysisPanel({
     >
       <h2 className={TEXT.sectionTitle}>AI 解读（自带密钥）</h2>
 
-      {boundaryBlocked ? (
+      {boundary ? (
         <p
           className={`${TEXT.bodySm} rounded-sm border border-bazi-warning bg-bazi-warning-soft p-4`}
           role="alert"
         >
-          真太阳时修正跨越了日界或时辰，请先在出生信息中勾选确认，再请求 AI 解读。
+          <span className="font-medium text-bazi-ink">
+            真太阳时修正跨越了
+            {boundary.changedDay ? "日界" : ""}
+            {boundary.changedDay && boundary.changedShichen ? "与" : ""}
+            {boundary.changedShichen ? "时辰" : ""}：民用时 {boundary.civilDay} {boundary.civilShichen}时 → 真太阳时 {boundary.trueSolarDay} {boundary.trueSolarShichen}时。
+          </span>
+          <span className={`${TEXT.caption} mt-1 block`}>
+            两种候选四柱不同；请确认后再请求 AI 解读。此确认不会变更当前已生成的命盘。
+          </span>
+          <Checkbox
+            checked={boundaryAcknowledged}
+            onCheckedChange={onBoundaryAckChange}
+            label="我已了解时辰差异，按已选排盘依据请求 AI 解读"
+            className={`${TEXT.bodySm} mt-3 min-h-touch font-medium text-bazi-ink`}
+          >
+            我已了解时辰差异，按已选排盘依据请求 AI 解读
+          </Checkbox>
         </p>
       ) : null}
 

@@ -70,14 +70,48 @@ export const YANG_REN_BRANCH: Record<HeavenlyStem, EarthlyBranch> = {
   己: "巳", 庚: "酉", 辛: "申", 壬: "子", 癸: "亥",
 };
 
-/** Annotation-only shensha data. None of these entries participate in Qi, structure, favorable, or projection. */
+/**
+ * Closed annotation-only shensha directory. These lookups are presentation
+ * facts only: no entry can enter Qi, structure, favorable, verdict, or trend
+ * projection. The catalog follows the lookup families collected in
+ * 《三命通会》卷三; variant-only entries are intentionally excluded.
+ */
 export const SHENSHA = Object.freeze({
-  tianYi: { 甲: "丑未", 戊: "丑未", 庚: "丑未", 乙: "子申", 己: "子申", 丙: "亥酉", 丁: "亥酉", 壬: "巳卯", 癸: "巳卯", 辛: "寅午" } as Record<HeavenlyStem, string>,
-  wenChang: { 甲: "巳", 乙: "午", 丙: "申", 丁: "酉", 戊: "申", 己: "酉", 庚: "亥", 辛: "子", 壬: "寅", 癸: "卯" } as Record<HeavenlyStem, EarthlyBranch>,
-  lu: { 甲: "寅", 乙: "卯", 丙: "巳", 丁: "午", 戊: "巳", 己: "午", 庚: "申", 辛: "酉", 壬: "亥", 癸: "子" } as Record<HeavenlyStem, EarthlyBranch>,
-  yiMaGroups: [["寅午戌", "申"], ["申子辰", "寅"], ["巳酉丑", "亥"], ["亥卯未", "巳"]] as Array<[string, string]>,
-  taoHuaGroups: [["寅午戌", "卯"], ["申子辰", "酉"], ["巳酉丑", "午"], ["亥卯未", "子"]] as Array<[string, string]>,
-  huaGaiGroups: [["寅午戌", "戌"], ["申子辰", "辰"], ["巳酉丑", "丑"], ["亥卯未", "未"]] as Array<[string, string]>,
+  dayStem: {
+    tianYi: { label: "天乙贵人", targets: { 甲: "丑未", 戊: "丑未", 庚: "丑未", 乙: "子申", 己: "子申", 丙: "亥酉", 丁: "亥酉", 壬: "巳卯", 癸: "巳卯", 辛: "寅午" } as Record<HeavenlyStem, string> },
+    taiJi: { label: "太极贵人", targets: { 甲: "子午", 乙: "子午", 丙: "卯酉", 丁: "卯酉", 戊: "辰戌丑未", 己: "辰戌丑未", 庚: "寅亥", 辛: "寅亥", 壬: "巳申", 癸: "巳申" } as Record<HeavenlyStem, string> },
+    wenChang: { label: "文昌贵人", targets: { 甲: "巳", 乙: "午", 丙: "申", 丁: "酉", 戊: "申", 己: "酉", 庚: "亥", 辛: "子", 壬: "寅", 癸: "卯" } as Record<HeavenlyStem, string> },
+    fuXing: { label: "福星贵人", targets: { 甲: "寅子", 乙: "丑卯", 丙: "寅子", 丁: "亥", 戊: "申", 己: "未", 庚: "午", 辛: "巳", 壬: "辰", 癸: "丑卯" } as Record<HeavenlyStem, string> },
+    guoYin: { label: "国印贵人", targets: { 甲: "戌", 乙: "亥", 丙: "丑", 丁: "寅", 戊: "丑", 己: "寅", 庚: "辰", 辛: "巳", 壬: "未", 癸: "申" } as Record<HeavenlyStem, string> },
+    tianChu: { label: "天厨贵人", targets: { 甲: "巳", 乙: "午", 丙: "巳", 丁: "午", 戊: "申", 己: "酉", 庚: "亥", 辛: "子", 壬: "寅", 癸: "卯" } as Record<HeavenlyStem, string> },
+    lu: { label: "禄神", targets: { 甲: "寅", 乙: "卯", 丙: "巳", 丁: "午", 戊: "巳", 己: "午", 庚: "申", 辛: "酉", 壬: "亥", 癸: "子" } as Record<HeavenlyStem, string> },
+    yangRen: { label: "羊刃", targets: YANG_REN_BRANCH as Record<HeavenlyStem, string> },
+    feiRen: { label: "飞刃", targets: { 甲: "酉", 乙: "申", 丙: "子", 丁: "亥", 戊: "子", 己: "亥", 庚: "卯", 辛: "寅", 壬: "午", 癸: "巳" } as Record<HeavenlyStem, string> },
+    hongYan: { label: "红艳煞", targets: { 甲: "午", 乙: "午", 丙: "寅", 丁: "未", 戊: "辰", 己: "辰", 庚: "戌", 辛: "酉", 壬: "子", 癸: "申" } as Record<HeavenlyStem, string> },
+    jinYu: { label: "金舆", targets: { 甲: "辰", 乙: "巳", 丙: "未", 丁: "申", 戊: "未", 己: "申", 庚: "戌", 辛: "亥", 壬: "丑", 癸: "寅" } as Record<HeavenlyStem, string> },
+  },
+  monthBranch: {
+    tianDe: { label: "天德贵人", targets: { 寅: "丁", 卯: "申", 辰: "壬", 巳: "辛", 午: "亥", 未: "甲", 申: "癸", 酉: "寅", 戌: "丙", 亥: "乙", 子: "巳", 丑: "庚" } as Record<EarthlyBranch, string> },
+    tianDeHe: { label: "天德合", targets: { 寅: "壬", 卯: "巳", 辰: "丁", 巳: "丙", 午: "寅", 未: "己", 申: "戊", 酉: "亥", 戌: "辛", 亥: "庚", 子: "申", 丑: "乙" } as Record<EarthlyBranch, string> },
+    yueDe: { label: "月德贵人", targets: { 寅: "丙", 午: "丙", 戌: "丙", 申: "壬", 子: "壬", 辰: "壬", 亥: "甲", 卯: "甲", 未: "甲", 巳: "庚", 酉: "庚", 丑: "庚" } as Record<EarthlyBranch, string> },
+    yueDeHe: { label: "月德合", targets: { 寅: "辛", 午: "辛", 戌: "辛", 申: "丁", 子: "丁", 辰: "丁", 亥: "己", 卯: "己", 未: "己", 巳: "乙", 酉: "乙", 丑: "乙" } as Record<EarthlyBranch, string> },
+    tianYi: { label: "天医", targets: { 寅: "丑", 卯: "寅", 辰: "卯", 巳: "辰", 午: "巳", 未: "午", 申: "未", 酉: "申", 戌: "酉", 亥: "戌", 子: "亥", 丑: "子" } as Record<EarthlyBranch, string> },
+  },
+  dayBranchGroups: {
+    yiMa: { label: "驿马", groups: [["寅午戌", "申"], ["申子辰", "寅"], ["巳酉丑", "亥"], ["亥卯未", "巳"]] },
+    taoHua: { label: "桃花", groups: [["寅午戌", "卯"], ["申子辰", "酉"], ["巳酉丑", "午"], ["亥卯未", "子"]] },
+    huaGai: { label: "华盖", groups: [["寅午戌", "戌"], ["申子辰", "辰"], ["巳酉丑", "丑"], ["亥卯未", "未"]] },
+    jiangXing: { label: "将星", groups: [["寅午戌", "午"], ["申子辰", "子"], ["巳酉丑", "酉"], ["亥卯未", "卯"]] },
+    jieSha: { label: "劫煞", groups: [["寅午戌", "亥"], ["申子辰", "巳"], ["巳酉丑", "寅"], ["亥卯未", "申"]] },
+    zaiSha: { label: "灾煞", groups: [["寅午戌", "子"], ["申子辰", "午"], ["巳酉丑", "卯"], ["亥卯未", "酉"]] },
+    wangShen: { label: "亡神", groups: [["寅午戌", "巳"], ["申子辰", "亥"], ["巳酉丑", "申"], ["亥卯未", "寅"]] },
+  } as Record<string, { label: string; groups: string[][] }>,
+  yearBranch: {
+    guChen: { label: "孤辰", targets: { 亥: "寅", 子: "寅", 丑: "寅", 寅: "巳", 卯: "巳", 辰: "巳", 巳: "申", 午: "申", 未: "申", 申: "亥", 酉: "亥", 戌: "亥" } as Record<EarthlyBranch, string> },
+    guaSu: { label: "寡宿", targets: { 亥: "戌", 子: "戌", 丑: "戌", 寅: "丑", 卯: "丑", 辰: "丑", 巳: "辰", 午: "辰", 未: "辰", 申: "未", 酉: "未", 戌: "未" } as Record<EarthlyBranch, string> },
+    hongLuan: { label: "红鸾", targets: { 子: "卯", 丑: "寅", 寅: "丑", 卯: "子", 辰: "亥", 巳: "戌", 午: "酉", 未: "申", 申: "未", 酉: "午", 戌: "巳", 亥: "辰" } as Record<EarthlyBranch, string> },
+    tianXi: { label: "天喜", targets: { 子: "酉", 丑: "申", 寅: "未", 卯: "午", 辰: "巳", 巳: "辰", 午: "卯", 未: "寅", 申: "丑", 酉: "子", 戌: "亥", 亥: "戌" } as Record<EarthlyBranch, string> },
+  },
 });
 
 const RULE_LABELS: Record<string, string> = {

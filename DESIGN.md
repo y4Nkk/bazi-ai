@@ -112,7 +112,7 @@ The header is pearl or translucent glass with a thin lower border, product mark,
 
 ### Trend chart and factor data
 
-The chart is a low-chrome canvas. Hover, focus, and touch selection reveal timestamp, resolution, OHLC, score, and deterministic reason codes. The selected period has a tinted primary band and focus outline. Factor tables use fixed labels, muted metadata, aligned numeric columns, and generous line height. Do not fake chart precision or hide calculation caveats in a tooltip.
+The chart is a low-chrome 命理时间证据工作台, not a finance terminal. It has one keyboard-focusable canvas: hover or focus reveals a crosshair and the selected period; left/right/Home/End select periods and PageUp/PageDown pan the loaded window. Shift-wheel and explicit zoom buttons change only the viewport density. 时辰 renders atomic points with their exact instant; only day/month/year render deterministic OHLC aggregates. 命势中轴 and 变势强度 consume the aligned domain indicators and never calculate visual substitutes in the component. The selected period has a tinted primary band and a persistent evidence inspector with exact time (when atomic), deterministic values, and rule basis. Factor tables use fixed labels, muted metadata, aligned numeric columns, and generous line height. Do not fake chart precision or hide calculation caveats in a tooltip.
 
 ### Analysis, dialogs, and feedback
 

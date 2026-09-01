@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { NextRequest } from "next/server";
 import { BirthInputSchema } from "../src/domain/bazi/normalize";
+import { POST } from "../src/app/api/chart/route";
 
 const VALID_INPUT = {
   birthInstant: "1990-05-15T14:00:00+09:00",
@@ -55,5 +57,38 @@ describe("BirthInput validation", () => {
 
   it("rejects removed local-time fields", () => {
     expect(BirthInputSchema.safeParse({ ...VALID_INPUT, localDateTime: "1990-05-15T14:00" }).success).toBe(false);
+  });
+});
+
+describe("chart request resolution boundary", () => {
+  it("accepts atomic shichen evidence and returns points rather than fabricated OHLC", async () => {
+    const response = await POST(
+      new NextRequest("http://bazi.test/api/chart", {
+        method: "POST",
+        body: JSON.stringify({
+          input: VALID_INPUT,
+          range: { start: "2026-08-01", end: "2026-08-01" },
+          dimension: "overall",
+          resolution: "shichen",
+        }),
+      }),
+    );
+    const body = await response.json() as { snapshot: { series: { resolution: string; periods: Array<{ kind: string }> } } };
+    expect(response.status).toBe(200);
+    expect(body.snapshot.series.resolution).toBe("shichen");
+    expect(body.snapshot.series.periods).toHaveLength(12);
+    expect(body.snapshot.series.periods.every((period) => period.kind === "point")).toBe(true);
+  });
+
+  it("rejects the removed weekly grain and shichen requests over seven days", async () => {
+    const request = (resolution: string, range = { start: "2026-08-01", end: "2026-08-01" }) =>
+      POST(
+        new NextRequest("http://bazi.test/api/chart", {
+          method: "POST",
+          body: JSON.stringify({ input: VALID_INPUT, range, dimension: "overall", resolution }),
+        }),
+      );
+    expect((await request("week")).status).toBe(400);
+    expect((await request("shichen", { start: "2026-08-01", end: "2026-08-08" })).status).toBe(400);
   });
 });

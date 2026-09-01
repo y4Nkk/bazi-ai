@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { AnalysisOutputSchema, AnalyzeSelectionSchema } from "../src/ai/schema";
+import { AnalysisOutputSchema, AnalyzeSelectionSchema, selectionFromSnapshot } from "../src/ai/schema";
 import { parseAndValidate, AiInvocationError } from "../src/ai/invoke";
 import { buildSystemPrompt, buildUserPrompt } from "../src/ai/prompt";
 import type { AnalyzeSelection } from "../src/ai/schema";
+import { calculateBaziSnapshot } from "../src/domain/bazi/snapshot";
+import type { RuleHit } from "../src/domain/bazi/contract";
 
 const VALID_OUTPUT = {
   evidenceStatus: "cited" as const,
@@ -36,12 +38,15 @@ const VALID_SELECTION: AnalyzeSelection = {
   selectedPeriod: {
     resolution: "day",
     dimension: "overall",
-    timestamp: "2026-08-15",
-    open: 54,
-    high: 67,
-    low: 54,
-    close: 57,
-    reasons: [{ id: "ZHI_LIUHE:午未|流年|流年|原局", code: "ZHI_LIUHE:午未", label: "地支六合", polarity: "support", direction: 1, temporalLayer: "流年", domainRelevance: ["overall", "relationship"], subjects: ["流年", "原局"] }],
+    period: {
+      kind: "candle",
+      timestamp: "2026-08-15",
+      open: 54,
+      high: 67,
+      low: 54,
+      close: 57,
+      reasons: [{ id: "ZHI_LIUHE:午未|流年|流年|原局", code: "ZHI_LIUHE:午未", label: "地支六合", polarity: "support", direction: 1, temporalLayer: "流年", domainRelevance: ["overall", "relationship"] }],
+    },
   },
   boundaryChanged: false,
   boundaryAcknowledged: false,
@@ -89,6 +94,34 @@ describe("AnalysisOutput schema", () => {
     };
     expect(AnalysisOutputSchema.safeParse(duplicated).success).toBe(false);
   });
+
+  it("accepts citing every rule the selected period can carry", () => {
+    const reasons = Array.from({ length: 24 }, (_, index) => ({
+      id: `RULE_${index}|流年|流年|原局`,
+      code: `RULE_${index}`,
+      label: `规则${index}`,
+      polarity: "support",
+      direction: 1,
+      temporalLayer: "流年",
+      domainRelevance: ["overall"],
+    }));
+    const selection = AnalyzeSelectionSchema.parse({
+      ...VALID_SELECTION,
+      selectedPeriod: {
+        ...VALID_SELECTION.selectedPeriod,
+        period: { ...VALID_SELECTION.selectedPeriod.period, reasons },
+      },
+    });
+    const ids = reasons.map((reason) => reason.id);
+    const output = {
+      ...VALID_OUTPUT,
+      summaryRuleIds: ids,
+      dimensionInterpretations: [{ dimension: "career", interpretation: "事业层面受多项确定性规则共同影响，宜稳步推进。", ruleIds: ids }],
+      selectedPeriod: { explanation: VALID_OUTPUT.selectedPeriod.explanation, ruleIds: ids },
+    };
+    expect(AnalysisOutputSchema.safeParse(output).success).toBe(true);
+    expect(parseAndValidate(JSON.stringify(output), selection).summaryRuleIds).toHaveLength(24);
+  });
 });
 
 describe("AnalyzeSelection schema", () => {
@@ -96,10 +129,85 @@ describe("AnalyzeSelection schema", () => {
     expect(AnalyzeSelectionSchema.safeParse(VALID_SELECTION).success).toBe(true);
   });
 
+  it("rejects internal relationship subjects from the AI request", () => {
+    const result = AnalyzeSelectionSchema.safeParse({
+      ...VALID_SELECTION,
+      selectedPeriod: {
+        ...VALID_SELECTION.selectedPeriod,
+        period: {
+          ...VALID_SELECTION.selectedPeriod.period,
+          reasons: [{
+            ...VALID_SELECTION.selectedPeriod.period.reasons[0],
+            subjects: ["流时", "大运", "甲午", "己亥", "午冲子", "亥冲巳"],
+          }],
+        },
+      },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("does not project internal relationship subjects into the model prompt", () => {
+    const snapshot = calculateBaziSnapshot({
+      input: {
+        birthInstant: "1990-05-15T14:00:00+09:00",
+        chartGender: "male",
+        timezone: "Asia/Shanghai",
+        longitude: 121.47,
+        latitude: 31.23,
+        timeStandard: "civil",
+      },
+      range: { start: "2026-08-01", end: "2026-08-01" },
+      dimension: "overall",
+      resolution: "day",
+    });
+    const internalRelation: RuleHit = {
+      id: "INTERNAL_RELATION",
+      code: "INTERNAL_RELATION",
+      label: "内部关系",
+      polarity: "support",
+      direction: 1,
+      severity: 3,
+      temporalLayer: "流年",
+      domainRelevance: ["overall"],
+      subjects: ["只留在确定性引擎的完整关系主体"],
+    };
+    const selection = selectionFromSnapshot({
+      ...snapshot,
+      series: {
+        ...snapshot.series,
+        periods: [{ ...snapshot.series.periods[0], reasons: [internalRelation] }],
+      },
+    }, snapshot.series.periods[0].id, false);
+
+    expect(selection.selectedPeriod.period.reasons[0]).not.toHaveProperty("subjects");
+    expect(buildUserPrompt(selection)).not.toContain("只留在确定性引擎的完整关系主体");
+  });
+
   it("allows a name as salutation metadata only", () => {
     const selection = { ...VALID_SELECTION, subjectName: "王小明" };
     expect(AnalyzeSelectionSchema.safeParse(selection).success).toBe(true);
     expect(buildUserPrompt(selection)).toContain("命主称呼：王小明（仅用于称呼，不是排盘或判断依据）");
+  });
+
+  it("accepts an atomic shichen selection without fabricating OHLC and labels it honestly in the prompt", () => {
+    const atomic: AnalyzeSelection = {
+      ...VALID_SELECTION,
+      selectedPeriod: {
+        resolution: "shichen",
+        dimension: "overall",
+        period: {
+          kind: "point",
+          timestamp: "2026-08-15T23:00",
+          instant: "2026-08-15T23:00:00+08:00",
+          value: 57,
+          reasons: [],
+        },
+      },
+    };
+    expect(AnalyzeSelectionSchema.safeParse(atomic).success).toBe(true);
+    const prompt = buildUserPrompt(atomic);
+    expect(prompt).toContain("时辰命势值");
+    expect(prompt).not.toContain("开 57");
   });
 
   it("rejects the removed dual-version fields and legacy reason list", () => {
@@ -155,7 +263,13 @@ describe("model text parsing", () => {
       cautions: [],
       selectedPeriod: { explanation: "当前规则无法确定该周期的具体倾向，因为引擎没有提供可引用规则。", ruleIds: [] },
     };
-    const emptySelection = { ...VALID_SELECTION, selectedPeriod: { ...VALID_SELECTION.selectedPeriod, reasons: [] } };
+    const emptySelection = {
+      ...VALID_SELECTION,
+      selectedPeriod: {
+        ...VALID_SELECTION.selectedPeriod,
+        period: { ...VALID_SELECTION.selectedPeriod.period, reasons: [] },
+      },
+    };
     expect(parseAndValidate(JSON.stringify(noEvidence), emptySelection)).toEqual(noEvidence);
     expect(() => parseAndValidate(JSON.stringify(noEvidence), VALID_SELECTION)).toThrow("不得以证据不足替代引用");
   });

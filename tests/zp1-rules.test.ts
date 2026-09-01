@@ -44,8 +44,8 @@ describe("ZP-1 temporal rules", () => {
     expect(hits.some((reason) => reason.subjects.includes("大运"))).toBe(true);
     expect(hits.every((reason) => reason.code && reason.label && reason.subjects.length > 0)).toBe(true);
     const result = evaluateTransit(input, natal, judgment, transit);
-    expect(result.scores.overall).toBeGreaterThanOrEqual(5);
-    expect(result.scores.overall).toBeLessThanOrEqual(95);
+    expect(result.scores.overall).toBeGreaterThanOrEqual(0);
+    expect(result.scores.overall).toBeLessThanOrEqual(100);
     expect(new Set(result.reasons.map((reason) => `${reason.code}|${reason.temporalLayer}|${reason.subjects.join("|")}`)).size)
       .toBe(result.reasons.length);
   });

@@ -133,7 +133,7 @@ export function TimePicker({
           id={id}
           disabled={disabled}
           aria-label={ariaLabel}
-          className={`${CONTROL_SURFACE} ${TEXT.label} flex min-h-touch items-center gap-2 px-4 text-left font-normal ${
+          className={`${CONTROL_SURFACE} ${TEXT.label} flex min-h-touch w-full items-center gap-2 px-4 text-left font-normal ${
             parsed ? "text-bazi-ink" : "text-bazi-ink-placeholder"
           } ${className ?? ""}`}
         >

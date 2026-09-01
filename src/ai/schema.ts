@@ -6,23 +6,59 @@
  * malformed model response fails validation instead of being rendered.
  */
 import { z } from "zod";
-import { DIMENSION_KEYS } from "../domain/bazi/contract";
+import { DIMENSION_KEYS, RESOLUTION_KEYS } from "../domain/bazi/contract";
 import type { ChartSnapshot } from "../domain/bazi/contract";
 
 const dimensionEnum = z.enum(DIMENSION_KEYS);
+
+/**
+ * 一个选中周期可携带的确定性规则上限，输入 reasons 与输出引用数组共用；
+ * 引用上限若低于它，模型如实引用全部规则就会被结构校验拒绝。
+ */
+const MAX_PERIOD_RULES = 24;
+
+const PeriodReasonsSchema = z.array(z.strictObject({
+  code: z.string().min(1).max(80),
+  id: z.string().min(1).max(180),
+  label: z.string().min(1).max(40),
+  polarity: z.enum(["support", "pressure", "context"]),
+  direction: z.union([z.literal(-1), z.literal(0), z.literal(1)]),
+  temporalLayer: z.enum(["原局", "大运", "流年", "流月", "流日", "流时"]),
+  domainRelevance: z.array(dimensionEnum).min(1).max(10),
+})).max(MAX_PERIOD_RULES);
+
+/** The AI sees exactly the selected domain period: an aggregate candle or an atomic 时辰 point. */
+const SelectedPeriodSchema = z.discriminatedUnion("kind", [
+  z.strictObject({
+    kind: z.literal("candle"),
+    timestamp: z.string().min(4).max(10),
+    open: z.number().min(0).max(100),
+    high: z.number().min(0).max(100),
+    low: z.number().min(0).max(100),
+    close: z.number().min(0).max(100),
+    reasons: PeriodReasonsSchema,
+  }),
+  z.strictObject({
+    kind: z.literal("point"),
+    timestamp: z.string().min(10).max(16),
+    instant: z.string().min(20).max(40),
+    value: z.number().min(0).max(100),
+    reasons: PeriodReasonsSchema,
+  }),
+]);
 
 export const AnalysisOutputSchema = z
   .strictObject({
     /** A response without any active deterministic rule must say so explicitly. */
     evidenceStatus: z.enum(["cited", "insufficient"]),
     summary: z.string().min(20).max(800),
-    summaryRuleIds: z.array(z.string().min(1).max(180)).max(12),
+    summaryRuleIds: z.array(z.string().min(1).max(180)).max(MAX_PERIOD_RULES),
     dimensionInterpretations: z
       .array(
         z.strictObject({
           dimension: dimensionEnum,
           interpretation: z.string().min(10).max(600),
-          ruleIds: z.array(z.string().min(1).max(180)).max(12),
+          ruleIds: z.array(z.string().min(1).max(180)).max(MAX_PERIOD_RULES),
         }),
       )
       .max(10)
@@ -34,7 +70,7 @@ export const AnalysisOutputSchema = z
     cautions: z.array(z.string().min(4).max(200)).max(6),
     selectedPeriod: z.strictObject({
       explanation: z.string().min(30).max(1200),
-      ruleIds: z.array(z.string().min(1).max(180)).max(12),
+      ruleIds: z.array(z.string().min(1).max(180)).max(MAX_PERIOD_RULES),
     }),
     disclaimer: z.string().min(10).max(400),
   })
@@ -75,23 +111,9 @@ export const AnalyzeSelectionSchema = z
     primaryStructure: z.string().min(1),
     favorableElements: z.array(z.enum(["木", "火", "土", "金", "水"])).min(1).max(5),
     selectedPeriod: z.strictObject({
-      resolution: z.enum(["day", "month", "year"]),
+      resolution: z.enum(RESOLUTION_KEYS),
       dimension: dimensionEnum,
-      timestamp: z.string().min(4).max(10),
-      open: z.number().min(0).max(100),
-      high: z.number().min(0).max(100),
-      low: z.number().min(0).max(100),
-      close: z.number().min(0).max(100),
-      reasons: z.array(z.strictObject({
-        code: z.string().min(1).max(80),
-        id: z.string().min(1).max(180),
-        label: z.string().min(1).max(40),
-        polarity: z.enum(["support", "pressure", "context"]),
-        direction: z.union([z.literal(-1), z.literal(0), z.literal(1)]),
-        temporalLayer: z.enum(["原局", "大运", "流年", "流月", "流日", "流时"]),
-        domainRelevance: z.array(dimensionEnum).min(1).max(10),
-        subjects: z.array(z.string().min(1).max(30)).max(4),
-      })).max(24),
+      period: SelectedPeriodSchema,
     }),
     boundaryChanged: z.boolean(),
     boundaryAcknowledged: z.boolean(),
@@ -103,15 +125,15 @@ export const AnalyzeSelectionSchema = z
 
 export type AnalyzeSelection = z.infer<typeof AnalyzeSelectionSchema>;
 
-/** Builds the compact selection from a snapshot and the chosen candle index. */
+/** Builds the compact selection from a snapshot and its stable domain period id. */
 export function selectionFromSnapshot(
   snapshot: ChartSnapshot,
-  candleIndex: number,
+  periodId: string,
   boundaryAcknowledged: boolean,
 ): AnalyzeSelection {
-  const candle = snapshot.series.candles[candleIndex];
-  if (!candle) {
-    throw new Error(`选中的周期不存在: ${candleIndex}`);
+  const period = snapshot.series.periods.find((candidate) => candidate.id === periodId);
+  if (!period) {
+    throw new Error(`选中的周期不存在: ${periodId}`);
   }
   return AnalyzeSelectionSchema.parse({
     snapshotKey: snapshot.snapshotKey,
@@ -130,14 +152,29 @@ export function selectionFromSnapshot(
     selectedPeriod: {
       resolution: snapshot.series.resolution,
       dimension: snapshot.series.dimension,
-      timestamp: candle.timestamp,
-      open: candle.open,
-      high: candle.high,
-      low: candle.low,
-      close: candle.close,
-      reasons: candle.reasons.map(({ id, code, label, polarity, direction, temporalLayer, domainRelevance, subjects }) => ({ id, code, label, polarity, direction, temporalLayer, domainRelevance, subjects })),
+      period: period.kind === "candle"
+        ? {
+            kind: period.kind,
+            timestamp: period.timestamp,
+            open: period.open,
+            high: period.high,
+            low: period.low,
+            close: period.close,
+            reasons: period.reasons.map(compactReason),
+          }
+        : {
+            kind: period.kind,
+            timestamp: period.timestamp,
+            instant: period.instant,
+            value: period.value,
+            reasons: period.reasons.map(compactReason),
+          },
     },
     boundaryChanged: snapshot.boundary !== null,
     boundaryAcknowledged,
   });
+}
+
+function compactReason({ id, code, label, polarity, direction, temporalLayer, domainRelevance }: ChartSnapshot["series"]["periods"][number]["reasons"][number]) {
+  return { id, code, label, polarity, direction, temporalLayer, domainRelevance };
 }

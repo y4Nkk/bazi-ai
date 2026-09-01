@@ -1,8 +1,9 @@
 /** Natal four-pillar chart derived from one evaluated wall clock. */
-import { BRANCH_ELEMENTS, STEM_ELEMENTS, type Element } from "./constants";
+import { BRANCH_ELEMENTS, EARTHLY_BRANCHES, HEAVENLY_STEMS, STEM_ELEMENTS, branchIndexOf, stemIndexOf, type EarthlyBranch, type Element, type HeavenlyStem } from "./constants";
 import { monthYearPillarsAtInstant, seasonalProgressPermilleAtInstant, solarOf } from "./calendar";
-import { HIDDEN_STEM_WEIGHTS, SHENSHA, YANG_REN_BRANCH, hiddenStemRank, lifeStageOf, nayinOf, tenGodOf, voidBranchesOf } from "./rules";
-import type { NatalChart, PillarFact, PillarName, RootGrade } from "./contract";
+import { GAN_WUHE, HIDDEN_STEM_WEIGHTS, LIUHE, hiddenStemRank, lifeStageOf, nayinOf, tenGodOf, voidBranchesOf } from "./rules";
+import { shenshaForGanzhi, type ShenshaContext } from "./shensha";
+import type { AuxiliaryPillarFact, NatalChart, PillarFact, PillarName, RootGrade } from "./contract";
 
 /**
  * Day and hour are evaluated from the selected local/true-solar wall clock.
@@ -17,12 +18,24 @@ export function natalChartOf(localDateTime: string, birthInstant?: string): Nata
     ? monthYearPillarsAtInstant(birthInstant)
     : { yearGZ: ec.getYear(), monthGZ: ec.getMonth() };
 
-  const pillars: PillarFact[] = [
+  const rawPillars: PillarFact[] = [
     pillarFact("year", yearMonth.yearGZ, dayMasterStem, tenGodOf(dayMasterStem, yearMonth.yearGZ[0])),
     pillarFact("month", yearMonth.monthGZ, dayMasterStem, tenGodOf(dayMasterStem, yearMonth.monthGZ[0])),
     pillarFact("day", ec.getDay(), dayMasterStem, "日主"),
     pillarFact("hour", ec.getTime(), dayMasterStem, ec.getTimeShiShenGan()),
   ];
+  const voidBranches = voidBranchesOf(rawPillars[2].ganzhi) as EarthlyBranch[];
+  const shenshaContext: ShenshaContext = {
+    dayStem: dayMasterStem as HeavenlyStem,
+    dayBranch: rawPillars[2].branch as EarthlyBranch,
+    monthBranch: rawPillars[1].branch as EarthlyBranch,
+    yearBranch: rawPillars[0].branch as EarthlyBranch,
+    voidBranches,
+  };
+  const pillars = rawPillars.map((pillar) => ({
+    ...pillar,
+    shensha: shenshaForGanzhi(shenshaContext, pillar.ganzhi),
+  }));
 
   const elementCounts = emptyElementCounts();
   for (const pillar of pillars) {
@@ -45,11 +58,12 @@ export function natalChartOf(localDateTime: string, birthInstant?: string): Nata
     seasonalProgressPermille: birthInstant
       ? seasonalProgressPermilleAtInstant(birthInstant)
       : seasonalProgressPermille(localDateTime, lunar.getPrevJie().getSolar().toYmdHms(), lunar.getNextJie().getSolar().toYmdHms()),
-    voidBranches: voidBranchesOf(pillars[2].ganzhi),
+    voidBranches,
     roots: pillars.flatMap((pillar) => pillar.hiddenStemFacts
       .filter((hidden) => hidden.element === STEM_ELEMENTS[dayMasterStem as keyof typeof STEM_ELEMENTS])
       .map((hidden) => ({ pillar: pillar.name, stem: hidden.stem, grade: ["临官", "帝旺"].includes(pillar.lifeStage) ? "prosperous" as const : rootGrade(hidden.rank) }))),
-    annotations: annotationsOf(dayMasterStem, pillars.map((pillar) => pillar.branch), voidBranchesOf(pillars[2].ganzhi)),
+    annotations: uniqueShensha(pillars.flatMap((pillar) => pillar.shensha)),
+    auxiliaryPillars: auxiliaryPillarsOf(pillars),
   };
 }
 
@@ -61,27 +75,6 @@ function seasonalProgressPermille(localDateTime: string, previousJie: string, ne
     throw new Error("节气区间无法计算");
   }
   return Math.max(0, Math.min(1000, Math.floor(((at - start) * 1000) / (end - start))));
-}
-
-
-function groupAnnotation(branches: string[], groups: Array<[string, string]>, label: string, code: string): Array<{ code: string; label: string; subjects: string[] }> {
-  return groups.flatMap(([base, target]) => branches.some((branch) => base.includes(branch)) && branches.includes(target)
-    ? [{ code, label, subjects: [target] }]
-    : []);
-}
-
-function annotationsOf(dayStem: string, branches: string[], voidBranches: string[]): Array<{ code: string; label: string; subjects: string[] }> {
-  const annotations = [
-    ...(branches.some((branch) => SHENSHA.tianYi[dayStem as keyof typeof SHENSHA.tianYi].includes(branch)) ? [{ code: "SHENSHA_TIAN_YI", label: "天乙贵人", subjects: branches.filter((branch) => SHENSHA.tianYi[dayStem as keyof typeof SHENSHA.tianYi].includes(branch)) }] : []),
-    ...(branches.some((branch) => branch === SHENSHA.wenChang[dayStem as keyof typeof SHENSHA.wenChang]) ? [{ code: "SHENSHA_WEN_CHANG", label: "文昌", subjects: [SHENSHA.wenChang[dayStem as keyof typeof SHENSHA.wenChang]] }] : []),
-    ...(branches.some((branch) => branch === SHENSHA.lu[dayStem as keyof typeof SHENSHA.lu]) ? [{ code: "SHENSHA_LU", label: "禄", subjects: [SHENSHA.lu[dayStem as keyof typeof SHENSHA.lu]] }] : []),
-    ...(branches.some((branch) => branch === YANG_REN_BRANCH[dayStem as keyof typeof YANG_REN_BRANCH]) ? [{ code: "SHENSHA_YANG_REN", label: "羊刃", subjects: [YANG_REN_BRANCH[dayStem as keyof typeof YANG_REN_BRANCH]] }] : []),
-    ...groupAnnotation(branches, SHENSHA.yiMaGroups, "驿马", "SHENSHA_YI_MA"),
-    ...groupAnnotation(branches, SHENSHA.taoHuaGroups, "桃花", "SHENSHA_TAO_HUA"),
-    ...groupAnnotation(branches, SHENSHA.huaGaiGroups, "华盖", "SHENSHA_HUA_GAI"),
-    ...branches.filter((branch) => voidBranches.includes(branch)).map((branch) => ({ code: "SHENSHA_KONG_WANG", label: "空亡", subjects: [branch] })),
-  ];
-  return annotations;
 }
 
 function pillarFact(
@@ -111,7 +104,50 @@ function pillarFact(
     hiddenStemFacts,
     lifeStage: lifeStageOf(dayMasterStem, branch),
     nayin: nayinOf(ganzhi),
+    shensha: [],
   };
+}
+
+const MONTH_BRANCH_ORDER = ["寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥", "子", "丑"] as const;
+
+function auxiliaryPillarsOf(pillars: PillarFact[]): AuxiliaryPillarFact[] {
+  const [year, month, day, hour] = pillars;
+  const taiYuan = HEAVENLY_STEMS[(stemIndexOf(month.stem) + 1) % 10]
+    + EARTHLY_BRANCHES[(branchIndexOf(month.branch) + 3) % 12];
+  const taiXiStem = HEAVENLY_STEMS.find((stem) => GAN_WUHE.has(`${day.stem}${stem}`));
+  const taiXiBranch = LIUHE[day.branch as EarthlyBranch];
+  if (!taiXiStem || !taiXiBranch) throw new Error("胎息干支无法计算");
+  const taiXi = taiXiStem + taiXiBranch;
+  const monthIndex = MONTH_BRANCH_ORDER.indexOf(month.branch as (typeof MONTH_BRANCH_ORDER)[number]) + 1;
+  const timeMonthIndex = MONTH_BRANCH_ORDER.indexOf(hour.branch as (typeof MONTH_BRANCH_ORDER)[number]) + 1;
+  if (monthIndex === 0 || timeMonthIndex === 0) throw new Error("命身宫月时支无法计算");
+  const mingSum = monthIndex + timeMonthIndex;
+  const mingOffset = (mingSum >= 14 ? 26 : 14) - mingSum;
+  const shenSum = monthIndex + branchIndexOf(hour.branch) + 1;
+  const shenOffset = shenSum > 12 ? shenSum - 12 : shenSum;
+  const mingGong = auxiliaryGanzhi(year.stem, mingOffset);
+  const shenGong = auxiliaryGanzhi(year.stem, shenOffset);
+  return [
+    { name: "胎元", ganzhi: taiYuan, nayin: nayinOf(taiYuan) },
+    { name: "胎息", ganzhi: taiXi, nayin: nayinOf(taiXi) },
+    { name: "命宫", ganzhi: mingGong, nayin: nayinOf(mingGong) },
+    { name: "身宫", ganzhi: shenGong, nayin: nayinOf(shenGong) },
+  ];
+}
+
+function auxiliaryGanzhi(yearStem: string, offset: number): string {
+  const stem = HEAVENLY_STEMS[((stemIndexOf(yearStem) + 1) * 2 + offset - 1) % 10];
+  return stem + MONTH_BRANCH_ORDER[offset - 1];
+}
+
+function uniqueShensha(facts: PillarFact["shensha"]): PillarFact["shensha"] {
+  const seen = new Set<string>();
+  return facts.filter((fact) => {
+    const key = `${fact.code}|${fact.target}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function rootGrade(rank: "main" | "middle" | "residual"): RootGrade {

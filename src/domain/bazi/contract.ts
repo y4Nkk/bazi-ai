@@ -34,6 +34,23 @@ export interface PillarFact {
   hiddenStemFacts: HiddenStemFact[];
   lifeStage: string;
   nayin: string;
+  /** Annotation-only traditional stars attached to this exact pillar. */
+  shensha: ShenshaFact[];
+}
+
+export interface ShenshaFact {
+  code: string;
+  label: string;
+  /** Natal value that activated the lookup, such as 日干甲 or 月支寅. */
+  reference: string;
+  /** Matching stem, branch, or pillar value on the annotated column. */
+  target: string;
+}
+
+export interface AuxiliaryPillarFact {
+  name: "胎元" | "胎息" | "命宫" | "身宫";
+  ganzhi: string;
+  nayin: string;
 }
 
 export interface CalendarFacts {
@@ -70,7 +87,9 @@ export interface NatalChart {
   voidBranches: string[];
   roots: Array<{ pillar: PillarName; stem: string; grade: RootGrade }>;
   /** Closed traditional annotations; never used by qi, structure, or projection. */
-  annotations: Array<{ code: string; label: string; subjects: string[] }>;
+  annotations: ShenshaFact[];
+  /** Auxiliary pillars calculated from the selected natal clock. */
+  auxiliaryPillars: AuxiliaryPillarFact[];
 }
 
 export interface LuckCycle {
@@ -215,12 +234,26 @@ export const DIMENSION_LABELS: Record<Dimension, string> = {
   mobility: "迁移",
 };
 
-export type Resolution = "day" | "month" | "year";
+/** The only selectable evidence-chart grains. 时辰 is an atomic point; the rest are OHLC aggregates. */
+export const RESOLUTION_KEYS = ["shichen", "day", "month", "year"] as const;
+export type Resolution = typeof RESOLUTION_KEYS[number];
 
 export const RESOLUTION_LABELS: Record<Resolution, string> = {
+  shichen: "时辰",
   day: "日",
   month: "月",
   year: "年",
+};
+
+/** Public scale for every deterministic evidence-chart value. */
+export const TREND_INDEX_RANGE = { min: 0, max: 100 } as const;
+
+/** Maximum selectable calendar span at each aggregation grain. */
+export const TREND_RANGE_LIMITS: Record<Resolution, { maxDays: number; label: string }> = {
+  shichen: { maxDays: 7, label: "时辰视图最多 7 天" },
+  day: { maxDays: 62, label: "日视图最多 62 天" },
+  month: { maxDays: 732, label: "月视图最多 24 个月" },
+  year: { maxDays: 4400, label: "年视图最多 12 年" },
 };
 
 export interface TrendRange {
@@ -239,30 +272,72 @@ export interface TransitPillars {
 
 export type DimensionScores = Record<Dimension, number>;
 
-/** Smallest deterministic trend point: one shichen of one civil day. */
+/** Full per-dimension shichen evaluation used inside the domain to form public TrendPoint and aggregate candles. */
 export interface SeriesPoint {
   timestamp: string;
+  /** Exact IANA-resolved instant; preserves the two occurrences in a DST overlap. */
+  instant: string;
+  transit: TransitPillars;
   scores: DimensionScores;
   reasons: RuleHit[];
   verdicts: Record<Dimension, DomainVerdict>;
 }
 
 export interface Candle {
+  /** Aggregate periods only. A shichen is represented by TrendPoint, never fabricated as OHLC. */
+  kind: "candle";
+  /** Stable selection identity: `${resolution}:${timestamp}`. */
+  id: string;
   timestamp: string;
+  /** Exact endpoint represented by close and by the professional-detail view. */
+  closeInstant: string;
+  transit: TransitPillars;
   open: number;
   high: number;
   low: number;
   close: number;
   reasons: RuleHit[];
+  /** Absolute movement from the preceding displayed period close; first requested period is zero. */
   intensity: number;
+}
+
+/** One exact shichen observation for the selected dimension, without an invented OHLC interval. */
+export interface TrendPoint {
+  kind: "point";
+  /** Stable, exact selection identity. The offset-bearing instant distinguishes a DST overlap. */
+  id: string;
+  /** Civil clock label of this shichen boundary in the selected chart range. */
+  timestamp: string;
+  /** IANA-resolved, offset-bearing instant used by the deterministic transit calculation. */
+  instant: string;
+  transit: TransitPillars;
+  /** Deterministic selected-dimension index at this one instant. */
+  value: number;
+  reasons: RuleHit[];
+  /** Absolute change from the preceding displayed shichen; the first requested point is zero. */
+  intensity: number;
+}
+
+export type TrendPeriod = Candle | TrendPoint;
+
+/** A quiet, deterministic chart overlay/pane package; renderers consume it without recomputation. */
+export interface TrendIndicators {
+  /** Trailing window size used for trendCenter. */
+  trendCenterWindow: number;
+  /** Trailing mean of each period's close (or atomic value), rounded to the display tenth. */
+  trendCenter: number[];
+  /** One exact period-change magnitude per period, aligned with TrendSeries.periods. */
+  intensity: number[];
 }
 
 export interface TrendSeries {
   resolution: Resolution;
   dimension: Dimension;
   range: TrendRange;
-  candles: Candle[];
-  underlyingPoints: SeriesPoint[];
+  /** The single renderer/selection sequence. It is points at 时辰 and candles at all aggregate grains. */
+  periods: TrendPeriod[];
+  /** Domain-owned auxiliary data; UI must not derive these arrays. */
+  indicators: TrendIndicators;
 }
 
 /** Single public result of the deterministic engine. */

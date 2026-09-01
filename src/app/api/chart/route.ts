@@ -3,8 +3,8 @@ import { z } from "zod";
 import { BirthInputSchema, normalizeBirthInput } from "@/domain/bazi/normalize";
 import { daysBetween } from "@/domain/bazi/calendar";
 import { calculateBaziSnapshot } from "@/domain/bazi/snapshot";
-import { DIMENSION_KEYS } from "@/domain/bazi/contract";
-import { RANGE_LIMITS, RangeTooLargeError } from "@/domain/bazi/projection";
+import { DIMENSION_KEYS, RESOLUTION_KEYS, TREND_RANGE_LIMITS } from "@/domain/bazi/contract";
+import { RangeTooLargeError } from "@/domain/bazi/projection";
 
 export const runtime = "nodejs";
 
@@ -18,7 +18,7 @@ const ChartRequestSchema = z
       end: z.string().regex(ISO_DATE),
     }),
     dimension: z.enum(DIMENSION_KEYS),
-    resolution: z.enum(["day", "month", "year"]),
+    resolution: z.enum(RESOLUTION_KEYS),
   })
   .superRefine((value, ctx) => {
     const { range, resolution } = value;
@@ -31,7 +31,7 @@ const ChartRequestSchema = z
       return;
     }
     const dayCount = daysBetween(range.start, range.end) + 1;
-    const limit = RANGE_LIMITS[resolution];
+    const limit = TREND_RANGE_LIMITS[resolution];
     if (dayCount > limit.maxDays) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

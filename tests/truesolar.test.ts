@@ -110,10 +110,11 @@ describe("true-solar boundary crossing fixture", () => {
       },
       range: { start: "2024-11-03", end: "2024-11-03" },
       dimension: "overall",
-      resolution: "day",
+      resolution: "shichen",
     });
-    expect(snapshot.series.underlyingPoints).toHaveLength(13);
-    expect(new Set(snapshot.series.underlyingPoints.map((point) => point.timestamp)).size).toBe(12);
+    expect(snapshot.series.periods).toHaveLength(13);
+    expect(new Set(snapshot.series.periods.map((period) => period.timestamp)).size).toBe(12);
+    expect(new Set(snapshot.series.periods.map((period) => period.id)).size).toBe(13);
   });
 
   it("keeps civil-day endpoints aligned after a DST-overlap day", () => {
@@ -128,9 +129,9 @@ describe("true-solar boundary crossing fixture", () => {
       },
       range: { start: "2024-11-02", end: "2024-11-04" },
       dimension: "overall",
-      resolution: "month",
+      resolution: "shichen",
     });
-    expect(snapshot.series.underlyingPoints.map((point) => point.timestamp)).toEqual([
+    expect(snapshot.series.periods.filter((period) => period.timestamp.endsWith("T21:00")).map((period) => period.timestamp)).toEqual([
       "2024-11-02T21:00",
       "2024-11-03T21:00",
       "2024-11-04T21:00",
@@ -151,6 +152,6 @@ describe("true-solar boundary crossing fixture", () => {
       dimension: "overall",
       resolution: "day",
     });
-    expect(snapshot.series.candles.map((candle) => candle.timestamp)).toEqual(["2011-12-29", "2011-12-31"]);
+    expect(snapshot.series.periods.map((period) => period.timestamp)).toEqual(["2011-12-29", "2011-12-31"]);
   });
 });

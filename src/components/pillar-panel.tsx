@@ -1,44 +1,12 @@
 "use client";
 
-import type { CSSProperties } from "react";
 import { TEXT } from "@/lib/typography";
-import { BRANCH_ELEMENTS, STEM_ELEMENTS } from "@/domain/bazi/constants";
-import type { EarthlyBranch, Element, HeavenlyStem } from "@/domain/bazi/constants";
+import { STEM_ELEMENTS } from "@/domain/bazi/constants";
+import type { Element, HeavenlyStem } from "@/domain/bazi/constants";
 import type { ChartSnapshot } from "@/domain/bazi/contract";
+import { ELEMENT_GRADIENT, ELEMENT_TEXT, elementOfGanzhiChar, gradientInk } from "./bazi-presentation";
 
 const PILLAR_TITLES = ["年柱", "月柱", "日柱", "时柱"];
-
-/* Five-element presentation map; the color values live in tokens.css. */
-const ELEMENT_TEXT: Record<Element, string> = {
-  木: "text-bazi-element-wood",
-  火: "text-bazi-element-fire",
-  土: "text-bazi-element-earth",
-  金: "text-bazi-element-metal",
-  水: "text-bazi-element-water",
-};
-
-const ELEMENT_GRADIENT: Record<Element, string> = {
-  木: "var(--bazi-gradient-wood)",
-  火: "var(--bazi-gradient-fire)",
-  土: "var(--bazi-gradient-earth)",
-  金: "var(--bazi-gradient-metal)",
-  水: "var(--bazi-gradient-water)",
-};
-
-function gradientInk(element: Element): CSSProperties {
-  return {
-    backgroundImage: ELEMENT_GRADIENT[element],
-    WebkitBackgroundClip: "text",
-    backgroundClip: "text",
-    color: "transparent",
-  };
-}
-
-function elementOfGanzhiChar(char: string): Element {
-  return char in STEM_ELEMENTS
-    ? STEM_ELEMENTS[char as HeavenlyStem]
-    : BRANCH_ELEMENTS[char as EarthlyBranch];
-}
 
 export function PillarPanel({ snapshot }: { snapshot: ChartSnapshot }) {
   const { natal, civilCandidate, trueSolarCandidate, selectedStandard, qi, judgment } = snapshot;

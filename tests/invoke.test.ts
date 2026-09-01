@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { invokeAnalysis, AiInvocationError, parseAndValidate } from "../src/ai/invoke";
 import type { AnalyzeSelection } from "../src/ai/schema";
 
+const RULE_ID = "ZHI_LIUHE:午未|流年|流年|原局";
+
 const SELECTION: AnalyzeSelection = {
   snapshotKey: "0123456789abcdef",
   algorithmVersion: "zp-1.0.0",
@@ -16,16 +18,21 @@ const SELECTION: AnalyzeSelection = {
   selectedPeriod: {
     resolution: "day",
     dimension: "overall",
-    timestamp: "2026-08-15",
-    open: 54,
-    high: 67,
-    low: 54,
-    close: 57,
-    reasons: [{ id: "ZHI_LIUHE:午未|流年|流年|原局", code: "ZHI_LIUHE:午未", label: "地支六合", polarity: "support", direction: 1, temporalLayer: "流年", domainRelevance: ["overall", "relationship"], subjects: ["流年", "原局"] }],
+    period: {
+      kind: "candle",
+      timestamp: "2026-08-15",
+      open: 54,
+      high: 67,
+      low: 54,
+      close: 57,
+      reasons: [{ id: RULE_ID, code: "ZHI_LIUHE:午未", label: "地支六合", polarity: "support", direction: 1, temporalLayer: "流年", domainRelevance: ["overall", "relationship"] }],
+    },
   },
   boundaryChanged: false,
   boundaryAcknowledged: false,
 };
+
+let currentProvider = "openai";
 
 const KEY = "sk-SECRET-KEY-FOR-TEST-1234";
 
@@ -90,5 +97,42 @@ describe("provider invocation", () => {
 
     expect(error).toBeInstanceOf(AiInvocationError);
     expect((error as AiInvocationError).code).toBe("INVALID_OUTPUT");
+  });
+
+  it("sends no self-imposed output cap; only Anthropic carries its required max_tokens", async () => {
+    const output = {
+      evidenceStatus: "cited",
+      summary: "这是一段长度足够的整体解读，且只按已给定的传统规则说明当前周期。",
+      summaryRuleIds: [RULE_ID],
+      dimensionInterpretations: [{ dimension: "career", interpretation: "事业层面保持审慎推进，避免把短期信号当成确定结果。", ruleIds: [RULE_ID] }],
+      opportunities: ["维持既有节奏"],
+      cautions: ["避免过度承诺"],
+      selectedPeriod: { explanation: "所选周期只反映确定性引擎的规则组合，不代表现实事件或任何结果保证。", ruleIds: [RULE_ID] },
+      disclaimer: "本解读属于传统文化与娱乐性质，不构成任何现实决策依据。",
+    };
+    const json = JSON.stringify(output);
+    const payloads: Record<string, unknown> = {
+      openai: { choices: [{ message: { content: json } }] },
+      deepseek: { choices: [{ message: { content: json } }] },
+      anthropic: { content: [{ type: "text", text: json }] },
+      google: { candidates: [{ content: { parts: [{ text: json }] } }] },
+    };
+    const bodies: Array<Record<string, unknown>> = [];
+    globalThis.fetch = (async (_url: unknown, init?: RequestInit) => {
+      bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+      return new Response(JSON.stringify(payloads[currentProvider]), { status: 200 });
+    }) as typeof fetch;
+
+    for (const provider of ["openai", "deepseek", "anthropic", "google"] as const) {
+      currentProvider = provider;
+      await invokeAnalysis({ provider, model: "test-model", apiKey: KEY, selection: SELECTION });
+    }
+
+    const [, , anthropicBody, googleBody] = bodies;
+    expect(bodies[0]).not.toHaveProperty("max_completion_tokens");
+    expect(bodies[0]).not.toHaveProperty("max_tokens");
+    expect(bodies[1]).not.toHaveProperty("max_tokens");
+    expect(anthropicBody.max_tokens).toBe(64000);
+    expect(googleBody.generationConfig).not.toHaveProperty("maxOutputTokens");
   });
 });

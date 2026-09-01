@@ -62,7 +62,7 @@ export function assessTemporal(args: {
   const allEvidence = uniqueEvidence([...evidence, ...judgment.evidence]);
   return {
     transit,
-    evidence: projectionEvidence(allEvidence),
+    evidence: allEvidence,
     verdicts: verdictsOf({ input, natal, judgment, evidence: allEvidence }),
   };
 }
@@ -77,9 +77,9 @@ function uniqueEvidence(evidence: RuleHit[]): RuleHit[] {
   });
 }
 
-/** Full evidence stays on each domain verdict; K-line projection gets one representative per active layer. */
-function projectionEvidence(evidence: RuleHit[]): RuleHit[] {
-  const layers = ["大运", "流年", "流月", "流日", "流时"] as const;
+/** Candle and AI evidence is capped, but retains one auditable fact per active layer first. */
+export function selectSeriesEvidence(evidence: RuleHit[]): RuleHit[] {
+  const layers = ["原局", "大运", "流年", "流月", "流日", "流时"] as const;
   const representatives = layers.flatMap((layer) => evidence.find((hit) => hit.temporalLayer === layer) ?? []);
   return capReasons([...representatives, ...evidence]);
 }

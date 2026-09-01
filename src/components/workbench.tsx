@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "./app-shell";
 import { BirthForm, BirthSummary, type BirthFormState } from "./birth-form";
 import { Button } from "./controls";
@@ -8,21 +8,28 @@ import { TrendChart } from "./trend-chart";
 import { PillarPanel } from "./pillar-panel";
 import { LuckPanel } from "./luck-panel";
 import { AnalysisPanel, type AnalysisState } from "./analysis-panel";
+import { HistoryPanel } from "./history-panel";
+import { ProfessionalPanel } from "./professional-panel";
 import { TEXT } from "@/lib/typography";
 import { fetchAnalysis, fetchChartSnapshot } from "@/lib/client";
-import { loadWorkbenchCache, saveWorkbenchCache } from "@/lib/workbench-cache";
+import {
+  createWorkbenchHistoryId,
+  loadWorkbenchHistory,
+  saveWorkbenchHistory,
+  upsertWorkbenchHistory,
+  type WorkbenchHistoryRecord,
+} from "@/lib/workbench-cache";
 import type { Place } from "@/lib/places";
 import { selectionFromSnapshot } from "@/ai/schema";
 import type { ProviderId } from "@/ai/providers";
 import type { BirthInput } from "@/domain/bazi/normalize";
-import type { ChartSnapshot, Dimension, Resolution, TrendRange } from "@/domain/bazi/contract";
+import { TREND_RANGE_LIMITS, type ChartSnapshot, type Dimension, type Resolution, type TrendRange } from "@/domain/bazi/contract";
 import { birthInstantFromCivil, civilDateTimeOf } from "@/domain/bazi/astronomy";
 
 interface ChartControls {
   dimension: Dimension;
   resolution: Resolution;
-  /** First day of the current window; the window derives from it. */
-  anchor: string;
+  range: TrendRange;
 }
 
 const INITIAL_FORM: BirthFormState = {
@@ -54,9 +61,16 @@ function addMonths(day: string, months: number): string {
   return target.toISOString().slice(0, 10);
 }
 
-/** Window per DESIGN/V1: 日=自然月（≤62天）、月=24个月、年=12年。 */
-function rangeFor(anchor: string, resolution: Resolution): TrendRange {
-  const base = monthFloor(anchor);
+function addDays(day: string, days: number): string {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Native evidence ranges: 时辰=单日、日=自然月、月=24个月、年=12年。 */
+function defaultRangeFor(startDate: string, resolution: Resolution): TrendRange {
+  const base = monthFloor(startDate);
+  if (resolution === "shichen") return { start: startDate, end: startDate };
   if (resolution === "day") {
     const start = base;
     const rawEnd = addMonths(start, 1);
@@ -74,10 +88,17 @@ function rangeFor(anchor: string, resolution: Resolution): TrendRange {
   return { start: `${year}-01-01`, end: `${year + 11}-12-31` };
 }
 
-function shiftAnchor(anchor: string, resolution: Resolution, direction: -1 | 1): string {
-  if (resolution === "day") return addMonths(anchor, direction);
-  if (resolution === "month") return addMonths(anchor, direction * 12);
-  return addMonths(anchor, direction * 120);
+/** Moves a custom interval by its own inclusive calendar span. */
+function shiftRange(range: TrendRange, direction: -1 | 1): TrendRange {
+  const span = rangeDayCount(range);
+  return {
+    start: addDays(range.start, span * direction),
+    end: addDays(range.end, span * direction),
+  };
+}
+
+function rangeDayCount(range: TrendRange): number {
+  return Math.round((Date.parse(`${range.end}T00:00:00Z`) - Date.parse(`${range.start}T00:00:00Z`)) / 86_400_000) + 1;
 }
 
 export function Workbench() {
@@ -85,90 +106,119 @@ export function Workbench() {
   const [controls, setControls] = useState<ChartControls>(() => ({
     dimension: "overall",
     resolution: "day",
-    anchor: monthFloor(new Date().toISOString().slice(0, 10)),
+    range: defaultRangeFor(new Date().toISOString().slice(0, 10), "day"),
   }));
   const [snapshot, setSnapshot] = useState<ChartSnapshot | null>(null);
   const [chartLoading, setChartLoading] = useState(false);
   const [chartError, setChartError] = useState<string | null>(null);
-  const [selectedCandle, setSelectedCandle] = useState(0);
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [boundaryAcknowledged, setBoundaryAcknowledged] = useState(false);
-  /** Open while editing; collapses into the summary bar after a clean
-   * generation so the trend chart owns the first screen. A boundary
-   * warning keeps the form open for acknowledgement. */
+  /** Open while editing; collapses into the summary bar after generation so
+   * the trend chart owns the first screen. Boundary acknowledgement belongs
+   * to the AI analysis that it gates. */
   const [formOpen, setFormOpen] = useState(true);
   const [analysis, setAnalysis] = useState<AnalysisState>({ status: "idle", output: null, error: null });
   const [lastInput, setLastInput] = useState<BirthInput | null>(null);
+  const [history, setHistory] = useState<WorkbenchHistoryRecord[]>([]);
+  const [activeRecordId, setActiveRecordId] = useState<string | null>(null);
+  const [historyReady, setHistoryReady] = useState(false);
+  const chartRequestVersion = useRef(0);
+  const restoredRecordId = useRef<string | null>(null);
 
-  /** Restores the last cached result so a refresh loses neither the chart
-   * nor a paid AI analysis. Controls are rebuilt from the snapshot itself;
-   * the boundary acknowledgement is never cached — a boundary chart reopens
-   * the form for acknowledgement, exactly like a fresh generation would. */
-  useEffect(() => {
-    const cached = loadWorkbenchCache();
-    if (!cached) return;
-    const { snapshot } = cached;
-    const localDateTime = civilDateTimeOf(cached.input.timezone, cached.input.birthInstant);
-    setLastInput(cached.input);
+  const restoreHistoryRecord = useCallback((record: WorkbenchHistoryRecord) => {
+    chartRequestVersion.current += 1;
+    const localDateTime = civilDateTimeOf(record.input.timezone, record.input.birthInstant);
+    setLastInput(record.input);
     setFormState({
-      subjectName: cached.input.subjectName ?? "",
+      subjectName: record.input.subjectName ?? "",
       localDate: localDateTime.slice(0, 10),
       localTime: localDateTime.slice(11, 16),
-      utcOffset: cached.input.birthInstant.endsWith("Z") ? "+00:00" : cached.input.birthInstant.slice(-6),
-      chartGender: cached.input.chartGender,
-      timezone: cached.input.timezone,
-      birthplace: cached.input.birthplace ?? "",
-      longitude: String(cached.input.longitude),
-      latitude: String(cached.input.latitude),
-      timeStandard: cached.input.timeStandard,
+      utcOffset: record.input.birthInstant.endsWith("Z") ? "+00:00" : record.input.birthInstant.slice(-6),
+      chartGender: record.input.chartGender,
+      timezone: record.input.timezone,
+      birthplace: record.input.birthplace ?? "",
+      longitude: String(record.input.longitude),
+      latitude: String(record.input.latitude),
+      timeStandard: record.input.timeStandard,
     });
     setControls({
-      dimension: snapshot.series.dimension,
-      resolution: snapshot.series.resolution,
-      anchor: snapshot.series.range.start,
+      dimension: record.snapshot.series.dimension,
+      resolution: record.snapshot.series.resolution,
+      range: record.snapshot.series.range,
     });
-    setSnapshot(snapshot);
-    setSelectedCandle(cached.selectedCandle);
+    setSnapshot(record.snapshot);
+    setSelectedPeriodId(record.selectedPeriodId);
+    setBoundaryAcknowledged(false);
     setAnalysis(
-      cached.analysisOutput
-        ? { status: "done", output: cached.analysisOutput, error: null }
+      record.analysisOutput
+        ? { status: "done", output: record.analysisOutput, error: null }
         : { status: "idle", output: null, error: null },
     );
-    setFormOpen(snapshot.boundary !== null);
+    setChartLoading(false);
+    setChartError(null);
+    setActiveRecordId(record.id);
+    restoredRecordId.current = record.id;
+    setFormOpen(false);
   }, []);
 
-  /** Persists every committed result tuple; runs after the restore effect so
-   * a cacheless first mount writes nothing (snapshot still null). */
+  /** Restores the newest local record; all records remain selectable in the
+   * history panel and boundary acknowledgement is deliberately reset. */
   useEffect(() => {
-    if (!snapshot || !lastInput) return;
-    saveWorkbenchCache({
-      input: lastInput,
-      snapshot,
-      selectedCandle,
-      analysisOutput: analysis.output,
-    });
-  }, [snapshot, lastInput, selectedCandle, analysis.output]);
+    const records = loadWorkbenchHistory();
+    setHistory(records);
+    if (records[0]) restoreHistoryRecord(records[0]);
+    setHistoryReady(true);
+  }, [restoreHistoryRecord]);
+
+  useEffect(() => () => {
+    chartRequestVersion.current += 1;
+  }, []);
+
+  useEffect(() => {
+    if (historyReady) saveWorkbenchHistory(history);
+  }, [history, historyReady]);
+
+  /** Persists the active record after a chart or its AI reading commits. */
+  useEffect(() => {
+    if (!snapshot || !lastInput || !activeRecordId || !selectedPeriodId) return;
+    if (restoredRecordId.current === activeRecordId) {
+      restoredRecordId.current = null;
+      return;
+    }
+    setHistory((records) =>
+      upsertWorkbenchHistory(
+        records,
+        activeRecordId,
+        { input: lastInput, snapshot, selectedPeriodId, analysisOutput: analysis.output },
+        new Date().toISOString(),
+      ),
+    );
+  }, [snapshot, lastInput, activeRecordId, selectedPeriodId, analysis.output]);
 
   const loadChart = useCallback(
     async (input: BirthInput | null, next: ChartControls, collapseAfter = false) => {
       if (!input) return;
+      const requestVersion = chartRequestVersion.current + 1;
+      chartRequestVersion.current = requestVersion;
       setChartLoading(true);
       setChartError(null);
       try {
-        const range = rangeFor(next.anchor, next.resolution);
         const { snapshot: nextSnapshot } = await fetchChartSnapshot({
           input,
-          range,
+          range: next.range,
           dimension: next.dimension,
           resolution: next.resolution,
         });
+        if (requestVersion !== chartRequestVersion.current) return;
         setSnapshot(nextSnapshot);
-        setSelectedCandle(Math.floor(nextSnapshot.series.candles.length / 2));
+        setSelectedPeriodId(nextSnapshot.series.periods[Math.floor(nextSnapshot.series.periods.length / 2)]?.id ?? null);
         setAnalysis({ status: "idle", output: null, error: null });
-        if (collapseAfter && nextSnapshot.boundary == null) setFormOpen(false);
+        if (collapseAfter) setFormOpen(false);
       } catch (error) {
+        if (requestVersion !== chartRequestVersion.current) return;
         setChartError(error instanceof Error ? error.message : "排盘失败，请重试。");
       } finally {
-        setChartLoading(false);
+        if (requestVersion === chartRequestVersion.current) setChartLoading(false);
       }
     },
     [],
@@ -197,8 +247,11 @@ export function Workbench() {
       latitude: Number(formState.latitude),
       timeStandard: formState.timeStandard,
     };
+    setSnapshot(null);
     setLastInput(input);
+    setActiveRecordId(createWorkbenchHistoryId());
     setBoundaryAcknowledged(false);
+    setAnalysis({ status: "idle", output: null, error: null });
     void loadChart(input, controls, true);
   }, [formState, controls, loadChart]);
 
@@ -209,6 +262,35 @@ export function Workbench() {
       if (lastInput) void loadChart(lastInput, next);
     },
     [controls, lastInput, loadChart],
+  );
+
+  const changeResolution = useCallback(
+    (resolution: Resolution) => {
+      changeControls({
+        resolution,
+        range: defaultRangeFor(controls.range.start, resolution),
+      });
+    },
+    [changeControls, controls.range.start],
+  );
+
+  const changeRangeBoundary = useCallback(
+    (boundary: keyof TrendRange, value: string) => {
+      const range = boundary === "start"
+        ? value <= controls.range.end
+          ? { ...controls.range, start: value }
+          : { start: value, end: value }
+        : value >= controls.range.start
+          ? { ...controls.range, end: value }
+          : { start: value, end: value };
+      const limit = TREND_RANGE_LIMITS[controls.resolution];
+      if (rangeDayCount(range) > limit.maxDays) {
+        setChartError(`${limit.label}，请缩短起止日期后重试。`);
+        return;
+      }
+      changeControls({ range });
+    },
+    [changeControls, controls.range],
   );
 
   const handleFieldChange = useCallback((field: keyof BirthFormState, value: string) => {
@@ -225,16 +307,12 @@ export function Workbench() {
     }));
   }, []);
 
-  const boundaryBlocked = snapshot?.boundary !== null && snapshot?.boundary !== undefined
-    ? !boundaryAcknowledged
-    : false;
-
   const handleAnalyze = useCallback(
     async (args: { provider: ProviderId; model: string; apiKey: string; question: string }) => {
-      if (!snapshot) return;
+      if (!snapshot || !selectedPeriodId) return;
       setAnalysis({ status: "loading", output: null, error: null });
       try {
-        const selection = selectionFromSnapshot(snapshot, selectedCandle, boundaryAcknowledged);
+        const selection = selectionFromSnapshot(snapshot, selectedPeriodId, boundaryAcknowledged);
         const result = (await fetchAnalysis({
           selection,
           provider: args.provider,
@@ -251,15 +329,23 @@ export function Workbench() {
         });
       }
     },
-    [snapshot, selectedCandle, boundaryAcknowledged],
+    [snapshot, selectedPeriodId, boundaryAcknowledged],
   );
 
-  const rangeLabel = useMemo(() => {
-    const range = rangeFor(controls.anchor, controls.resolution);
-    return `${range.start} ~ ${range.end}`;
-  }, [controls.anchor, controls.resolution]);
+  /** An AI response belongs to one exact period and must disappear when that evidence changes. */
+  const selectPeriod = useCallback((periodId: string) => {
+    if (periodId === selectedPeriodId) return;
+    setSelectedPeriodId(periodId);
+    setAnalysis({ status: "idle", output: null, error: null });
+  }, [selectedPeriodId]);
 
-  const anchorYear = useMemo(() => Number(rangeFor(controls.anchor, controls.resolution).start.slice(0, 4)), [controls.anchor, controls.resolution]);
+  const anchorYear = useMemo(() => Number(controls.range.start.slice(0, 4)), [controls.range.start]);
+  const chartMatchesControls = snapshot !== null
+    && snapshot.series.dimension === controls.dimension
+    && snapshot.series.resolution === controls.resolution
+    && snapshot.series.range.start === controls.range.start
+    && snapshot.series.range.end === controls.range.end;
+  const selectedPeriod = snapshot?.series.periods.find((period) => period.id === selectedPeriodId) ?? null;
 
   return (
     <AppShell
@@ -304,34 +390,42 @@ export function Workbench() {
               onSubmit={handleSubmit}
               loading={chartLoading}
               snapshot={snapshot}
-              boundaryAcknowledged={boundaryAcknowledged}
-              onBoundaryAckChange={setBoundaryAcknowledged}
             />
           )}
           <TrendChart
-            candles={snapshot?.series.candles ?? []}
+            series={chartMatchesControls ? snapshot.series : null}
             dimension={controls.dimension}
             resolution={controls.resolution}
-            rangeLabel={rangeLabel}
-            selectedCandle={selectedCandle}
-            onSelectCandle={setSelectedCandle}
+            range={controls.range}
+            selectedPeriodId={selectedPeriodId}
+            onSelectPeriod={selectPeriod}
             onDimensionChange={(dimension) => changeControls({ dimension })}
-            onResolutionChange={(resolution) => changeControls({ resolution })}
+            onResolutionChange={changeResolution}
+            onRangeChange={changeRangeBoundary}
             onShiftWindow={(direction) =>
-              changeControls({ anchor: shiftAnchor(controls.anchor, controls.resolution, direction) })
+              changeControls({ range: shiftRange(controls.range, direction) })
             }
             loading={chartLoading}
+            error={chartMatchesControls ? null : chartError}
           />
           {snapshot ? <PillarPanel snapshot={snapshot} /> : null}
+          {snapshot ? <ProfessionalPanel snapshot={snapshot} selectedPeriod={selectedPeriod} /> : null}
         </div>
 
         <aside className="flex min-w-0 flex-col gap-6" aria-label="大运与解读">
+          <HistoryPanel
+            records={history}
+            activeRecordId={activeRecordId}
+            onSelect={restoreHistoryRecord}
+          />
           {snapshot ? (
             <>
               <LuckPanel snapshot={snapshot} anchorYear={anchorYear} />
               <AnalysisPanel
-                boundaryBlocked={boundaryBlocked}
-                selectedTimestamp={snapshot.series.candles[selectedCandle]?.timestamp ?? null}
+                boundary={snapshot.boundary}
+                boundaryAcknowledged={boundaryAcknowledged}
+                onBoundaryAckChange={setBoundaryAcknowledged}
+                selectedTimestamp={snapshot.series.periods.find((period) => period.id === selectedPeriodId)?.timestamp ?? null}
                 selectedResolution={snapshot.series.resolution ?? null}
                 selectedDimension={snapshot.series.dimension ?? null}
                 state={analysis}
@@ -342,7 +436,7 @@ export function Workbench() {
             <section className="flex min-h-48 flex-col items-center justify-center gap-2 rounded-lg border border-bazi-border bg-bazi-surface p-6 text-center">
               <p className={TEXT.bodyLg}>大运与解读将在这里生成</p>
               <p className={TEXT.caption}>
-                生成后可切换年、月、日粒度，查看四柱与大运，并请求 AI 解读。
+                生成后可切换时辰、日、月、年粒度，查看四柱与大运，并请求 AI 解读。
               </p>
             </section>
           )}

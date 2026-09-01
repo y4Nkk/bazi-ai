@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Button, Checkbox, Field, Input, Segmented, Select } from "./controls";
+import { Button, Field, Input, Segmented, Select } from "./controls";
 import { DatePicker } from "./date-picker";
 import { TimePicker } from "./time-picker";
 import { PlaceInput } from "./place-input";
@@ -72,8 +72,6 @@ export function BirthForm({
   onSubmit,
   loading,
   snapshot,
-  boundaryAcknowledged,
-  onBoundaryAckChange,
 }: {
   formState: BirthFormState;
   onFieldChange: (field: keyof BirthFormState, value: string) => void;
@@ -81,10 +79,7 @@ export function BirthForm({
   onSubmit: () => void;
   loading: boolean;
   snapshot: ChartSnapshot | null;
-  boundaryAcknowledged: boolean;
-  onBoundaryAckChange: (acknowledged: boolean) => void;
 }) {
-  const boundary = snapshot?.boundary ?? null;
   const correction = snapshot?.trueSolarCandidate.correctionMinutes ?? null;
 
   const correctionNote = useMemo(() => {
@@ -144,7 +139,7 @@ export function BirthForm({
             options={TIMEZONE_OPTIONS.map((zone) => ({ value: zone, label: zone }))}
           />
         </Field>
-        <Field label="UTC 偏移（夏令时重复时必填）" htmlFor="utc-offset">
+        <Field label="UTC 偏移（选填）" htmlFor="utc-offset">
           <Input
             id="utc-offset"
             inputMode="text"
@@ -219,33 +214,6 @@ export function BirthForm({
       </div>
 
       {correctionNote ? <p className={TEXT.meta}>{correctionNote}</p> : null}
-
-      {boundary ? (
-        <div
-          className="rounded-sm border border-bazi-warning bg-bazi-warning-soft p-4"
-          role="alert"
-        >
-          <p className={`${TEXT.bodySm} font-medium text-bazi-ink`}>
-            真太阳时修正跨越了
-            {boundary.changedDay ? "日界" : ""}
-            {boundary.changedDay && boundary.changedShichen ? "与" : ""}
-            {boundary.changedShichen ? "时辰" : ""}：
-            民用时 {boundary.civilDay} {boundary.civilShichen}时 → 真太阳时{" "}
-            {boundary.trueSolarDay} {boundary.trueSolarShichen}时。
-          </p>
-          <p className={`${TEXT.caption} mt-1`}>
-            两种候选四柱不同，请确认后按所选标准继续；确认前无法请求 AI 解读。
-          </p>
-          <Checkbox
-            checked={boundaryAcknowledged}
-            onCheckedChange={onBoundaryAckChange}
-            label="我已了解修正跨界，按当前所选标准排盘"
-            className={`${TEXT.bodySm} mt-3 min-h-touch font-medium text-bazi-ink`}
-          >
-            我已了解修正跨界，按当前所选标准排盘
-          </Checkbox>
-        </div>
-      ) : null}
 
       <Button
         type="submit"
