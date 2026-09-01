@@ -14,7 +14,7 @@ describe("structure and favorable precedence", () => {
     const judgment = resolveFavorable(natal, qi, structure, natalRelationsOf(natal));
     expect(structure.primaryStructure).toBe("七杀格");
     expect(judgment.structureAnchor).toBe(`${natal.monthCommand.stem}${natal.monthCommand.tenGod}`);
-    expect(judgment.favorableElements).toContain(judgment.climateNeed as NonNullable<typeof judgment.climateNeed>);
+    expect(judgment.climate.primaryElements.every((element) => judgment.elementDirectives.some((directive) => directive.element === element && directive.rank === 1))).toBe(true);
   });
 
   it("accepts a special structure only through the strict qi candidate, then changes favorable precedence", () => {
@@ -24,7 +24,7 @@ describe("structure and favorable precedence", () => {
     const judgment = resolveFavorable(natal, qi, structure, natalRelationsOf(natal));
     expect(structure.primaryStructure).toBe("从财格");
     expect(structure.status).toBe("formed");
-    expect(judgment.favorableElements).toContain(qi.drainingElements[1]);
+    expect(judgment.elementDirectives.some((directive) => directive.element === qi.drainingElements[1] && directive.sources.includes("special"))).toBe(true);
   });
 
   it("keeps only calendar-derived special structures that pass the stricter gates", () => {

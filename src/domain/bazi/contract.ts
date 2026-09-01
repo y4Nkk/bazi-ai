@@ -1,5 +1,5 @@
 /** Domain types owned by src/domain/bazi. BirthInput itself is owned by normalize.ts. */
-import type { Element } from "./constants";
+import type { EarthlyBranch, Element, HeavenlyStem } from "./constants";
 import type { BirthInput } from "./normalize";
 
 export type ChartGender = "male" | "female";
@@ -96,6 +96,8 @@ export interface NatalChart {
   monthCommand: HiddenStemFact;
   /** Position within the enclosing 节 interval, in integer thousandths. */
   seasonalProgressPermille: number;
+  /** The latest 节气 at the selected natal clock; it owns explicit qiong-tong clause gates. */
+  seasonalQi: string;
   voidBranches: string[];
   roots: Array<{ pillar: PillarName; stem: string; grade: RootGrade }>;
   /** Closed traditional annotations; never used by qi, structure, or projection. */
@@ -182,9 +184,36 @@ export interface QiState {
   elementStrength: Record<Element, number>;
   supportingElements: Element[];
   drainingElements: Element[];
-  climate: { temperature: "cold" | "balanced" | "warm"; moisture: "dry" | "balanced" | "wet" };
   flow: "blocked" | "partial" | "continuous";
   evidence: RuleHit[];
+}
+
+/** Frozen source locator for one executable 《穷通宝鉴》调候条款. */
+export interface ClimateSource {
+  work: "《穷通宝鉴》";
+  section: string;
+  url: string;
+  locator: string;
+}
+
+/** One and only one matched day-master × month-command climate directive. */
+export interface ClimateJudgment {
+  dayMaster: HeavenlyStem;
+  monthBranch: EarthlyBranch;
+  clauseId: string;
+  primaryStems: HeavenlyStem[];
+  secondaryStems: HeavenlyStem[];
+  primaryElements: Element[];
+  secondaryElements: Element[];
+  matchedConditions: string[];
+  source: ClimateSource;
+}
+
+/** Ordered element instruction; rank 1 is the strongest deterministic directive. */
+export interface ElementDirective {
+  element: Element;
+  rank: 1 | 2 | 3;
+  sources: Array<"climatePrimary" | "climateSecondary" | "special" | "balance" | "remedy">;
 }
 
 export interface NatalJudgment {
@@ -193,10 +222,8 @@ export interface NatalJudgment {
   auxiliaryStructure: string | null;
   structureStatus: "formed" | "impaired" | "candidate";
   structureAnchor: string;
-  climateNeed: Element | null;
-  balanceNeed: Element[];
-  remedyElement: Element | null;
-  favorableElements: Element[];
+  climate: ClimateJudgment;
+  elementDirectives: ElementDirective[];
   adverseElements: Element[];
   tendency: Tendency;
   intensity: Intensity;

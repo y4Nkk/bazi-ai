@@ -64,8 +64,8 @@ describe("Qi ledger", () => {
       timeStandard: "civil" as const,
     };
     const natalTheme = ruleHit("STRUCTURE", "support", 3, "原局", ["正官格"]);
-    const trigger = ruleHit("FAVOURABLE_ELEMENT", "support", 3, "流年", ["流年", "火"]);
-    const luck = ruleHit("FAVOURABLE_ELEMENT", "support", 3, "大运", ["大运", "火"]);
+    const trigger = ruleHit("SPECIAL_ELEMENT", "support", 3, "流年", ["流年", "火"]);
+    const luck = ruleHit("SPECIAL_ELEMENT", "support", 3, "大运", ["大运", "火"]);
 
     const withoutLuck = verdictsOf({ input, natal, judgment, evidence: [natalTheme, trigger] }).career;
     const aligned = verdictsOf({ input, natal, judgment, evidence: [natalTheme, luck, trigger] }).career;

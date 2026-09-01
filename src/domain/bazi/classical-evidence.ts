@@ -41,8 +41,8 @@ export const CLASSICAL_EVIDENCE: readonly ClassicalEvidenceEntry[] = [
     source: "《穷通宝鉴》",
     section: "十干分论",
     url: "https://zh.wikisource.org/wiki/%E7%A9%B7%E9%80%9A%E5%AE%9D%E9%89%B4",
-    implementation: "待逐条审校",
-    boundary: "现行仅为基础寒暖燥湿层；十日干×十二月令的主取、次取表尚未接入，不能把当前结果称为《穷通宝鉴》全表。",
+    implementation: "已接入",
+    boundary: "十日干×十二月令的 120 条基础主取、次取与已冻结的节气、旺衰覆写进入取用指令；优先级数值为 ZP-1 工程严重度，不冒充古籍分数。",
   },
   {
     area: "神煞查表",

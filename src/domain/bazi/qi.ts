@@ -1,4 +1,4 @@
-/** Five-element qi ledger: season, roots, exposure, climate, and flow. */
+/** Five-element qi ledger: season, roots, exposure, and flow. */
 import { BRANCH_ELEMENTS, ELEMENTS, generates, type Element } from "./constants";
 import { QI_RULES, elementControlledBy, elementGeneratedBy, ruleHit } from "./rules";
 import type { NatalChart, QiState, RelationEdge, RuleHit } from "./contract";
@@ -13,17 +13,6 @@ function roleElements(dayElement: Element): { resource: Element; output: Element
 
 function natalHit(code: string, polarity: RuleHit["polarity"], severity: RuleHit["severity"], subjects: string[]): RuleHit {
   return ruleHit(code, polarity, severity, "原局", subjects);
-}
-
-function climateFor(seasonalElement: Element): QiState["climate"] {
-  const climates: Record<Element, QiState["climate"]> = {
-    木: { temperature: "balanced", moisture: "wet" },
-    火: { temperature: "warm", moisture: "dry" },
-    土: { temperature: "balanced", moisture: "dry" },
-    金: { temperature: "cold", moisture: "dry" },
-    水: { temperature: "cold", moisture: "wet" },
-  };
-  return climates[seasonalElement];
 }
 
 function flowFor(values: Record<Element, number>): QiState["flow"] {
@@ -106,9 +95,7 @@ export function assessQi(natal: NatalChart, relations: RelationEdge[] = []): QiS
   if (weakFollowCandidate !== "none" && followCandidate === "none") {
     evidence.push(natalHit("QI_FOLLOW_BLOCKED", "context", 2, ["外柱见比劫或印星"]));
   }
-  const climate = climateFor(seasonalElement);
   const flow = flowFor(values);
-  evidence.push(natalHit("QI_CLIMATE", "context", 2, [climate.temperature, climate.moisture]));
   evidence.push(natalHit("QI_FLOW", flow === "continuous" ? "support" : flow === "blocked" ? "pressure" : "context", flow === "continuous" ? 3 : flow === "blocked" ? 2 : 1, [flow]));
 
   return {
@@ -118,7 +105,6 @@ export function assessQi(natal: NatalChart, relations: RelationEdge[] = []): QiS
     elementStrength: values,
     supportingElements: [dayElement, roles.resource],
     drainingElements: [roles.output, roles.wealth, roles.authority],
-    climate,
     flow,
     evidence,
   };

@@ -109,7 +109,22 @@ export const AnalyzeSelectionSchema = z
     dayMasterElement: z.string().min(1),
     luckDirection: z.enum(["顺行", "逆行"]),
     primaryStructure: z.string().min(1),
-    favorableElements: z.array(z.enum(["木", "火", "土", "金", "水"])).min(1).max(5),
+    climate: z.strictObject({
+      clauseId: z.string().min(1).max(120),
+      primaryStems: z.array(z.enum(["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"])).min(1).max(3),
+      secondaryStems: z.array(z.enum(["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"])).max(3),
+      matchedConditions: z.array(z.string().min(1).max(40)).min(1).max(4),
+      source: z.strictObject({
+        work: z.literal("《穷通宝鉴》"),
+        section: z.string().min(1).max(80),
+        locator: z.string().min(1).max(80),
+      }),
+    }),
+    elementDirectives: z.array(z.strictObject({
+      element: z.enum(["木", "火", "土", "金", "水"]),
+      rank: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+      sources: z.array(z.enum(["climatePrimary", "climateSecondary", "special", "balance", "remedy"])).min(1).max(5),
+    })).min(1).max(5),
     selectedPeriod: z.strictObject({
       resolution: z.enum(RESOLUTION_KEYS),
       dimension: dimensionEnum,
@@ -148,7 +163,18 @@ export function selectionFromSnapshot(
     dayMasterElement: snapshot.natal.dayMaster.element,
     luckDirection: snapshot.luck.directionLabel,
     primaryStructure: snapshot.judgment.primaryStructure,
-    favorableElements: snapshot.judgment.favorableElements,
+    climate: {
+      clauseId: snapshot.judgment.climate.clauseId,
+      primaryStems: snapshot.judgment.climate.primaryStems,
+      secondaryStems: snapshot.judgment.climate.secondaryStems,
+      matchedConditions: snapshot.judgment.climate.matchedConditions,
+      source: {
+        work: snapshot.judgment.climate.source.work,
+        section: snapshot.judgment.climate.source.section,
+        locator: snapshot.judgment.climate.source.locator,
+      },
+    },
+    elementDirectives: snapshot.judgment.elementDirectives,
     selectedPeriod: {
       resolution: snapshot.series.resolution,
       dimension: snapshot.series.dimension,

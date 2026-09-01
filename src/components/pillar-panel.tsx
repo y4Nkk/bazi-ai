@@ -4,13 +4,13 @@ import { TEXT } from "@/lib/typography";
 import { STEM_ELEMENTS } from "@/domain/bazi/constants";
 import type { Element, HeavenlyStem } from "@/domain/bazi/constants";
 import type { ChartSnapshot } from "@/domain/bazi/contract";
-import { ELEMENT_GRADIENT, ELEMENT_TEXT, elementOfGanzhiChar, gradientInk } from "./bazi-presentation";
+import { ELEMENT_TEXT, elementOfGanzhiChar, gradientInk } from "./bazi-presentation";
+import { FiveElementRadar } from "./five-element-radar";
 
 const PILLAR_TITLES = ["年柱", "月柱", "日柱", "时柱"];
 
 export function PillarPanel({ snapshot }: { snapshot: ChartSnapshot }) {
   const { natal, civilCandidate, trueSolarCandidate, selectedStandard, qi, judgment } = snapshot;
-  const elementTotal = Object.values(natal.elementCounts).reduce((a, b) => a + b, 0);
 
   const candidates = [
     { name: "民用时", standard: "civil" as const, candidate: civilCandidate },
@@ -67,25 +67,7 @@ export function PillarPanel({ snapshot }: { snapshot: ChartSnapshot }) {
 
       <section className="flex flex-col gap-2 border-t border-bazi-border-soft pt-4">
         <h3 className={TEXT.overline}>五行分布</h3>
-        <div className="flex flex-col gap-1">
-          {(Object.entries(natal.elementCounts) as Array<[Element, number]>).map(
-            ([element, count]) => (
-              <div key={element} className="flex items-center gap-2">
-                <span className={`${TEXT.tableCell} w-6 ${ELEMENT_TEXT[element]}`}>{element}</span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-bazi-surface-muted">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      backgroundImage: ELEMENT_GRADIENT[element],
-                      width: `${(count / elementTotal) * 100}%`,
-                    }}
-                  />
-                </div>
-                <span className={`${TEXT.tableCell} text-bazi-ink-muted`}>{count}</span>
-              </div>
-            ),
-          )}
-        </div>
+        <FiveElementRadar counts={natal.elementCounts} />
       </section>
 
       <section className="flex flex-col gap-2 border-t border-bazi-border-soft pt-4">
@@ -100,14 +82,24 @@ export function PillarPanel({ snapshot }: { snapshot: ChartSnapshot }) {
             <dd className={TEXT.bodySm}>{strengthLabel(qi.dayMasterStrength)}</dd>
           </div>
           <div>
-            <dt className={TEXT.micro}>有利五行</dt>
+            <dt className={TEXT.micro}>调候主取</dt>
             <dd className={`${TEXT.bodySm} flex gap-1`}>
-              {judgment.favorableElements.map((element) => <span key={element} className={ELEMENT_TEXT[element]}>{element}</span>)}
+              {judgment.climate.primaryStems.map((stem) => <span key={stem} className={ELEMENT_TEXT[STEM_ELEMENTS[stem]]}>{stem}</span>)}
             </dd>
           </div>
           <div>
-            <dt className={TEXT.micro}>调候所需</dt>
-            <dd className={TEXT.bodySm}>{judgment.climateNeed ? <span className={ELEMENT_TEXT[judgment.climateNeed]}>{judgment.climateNeed}</span> : "无"}</dd>
+            <dt className={TEXT.micro}>调候次取</dt>
+            <dd className={`${TEXT.bodySm} flex gap-1`}>
+              {judgment.climate.secondaryStems.length
+                ? judgment.climate.secondaryStems.map((stem) => <span key={stem} className={ELEMENT_TEXT[STEM_ELEMENTS[stem]]}>{stem}</span>)
+                : "无"}
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className={TEXT.micro}>五行取用指令</dt>
+            <dd className={`${TEXT.bodySm} flex flex-wrap gap-x-2`}>
+              {judgment.elementDirectives.map((directive) => <span key={directive.element} className={ELEMENT_TEXT[directive.element]}>{directive.element}（优先级{directive.rank}）</span>)}
+            </dd>
           </div>
         </dl>
       </section>

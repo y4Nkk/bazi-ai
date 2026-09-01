@@ -1,6 +1,6 @@
 /** Natal four-pillar chart derived from one evaluated wall clock. */
 import { BRANCH_ELEMENTS, EARTHLY_BRANCHES, HEAVENLY_STEMS, STEM_ELEMENTS, branchIndexOf, stemIndexOf, type EarthlyBranch, type Element, type HeavenlyStem } from "./constants";
-import { monthYearPillarsAtInstant, seasonalProgressPermilleAtInstant, solarOf } from "./calendar";
+import { modelSolarOfInstant, monthYearPillarsAtInstant, seasonalProgressPermilleAtInstant, solarOf } from "./calendar";
 import { GAN_WUHE, HIDDEN_STEM_WEIGHTS, LIUHE, hiddenStemRank, lifeStageOf, nayinOf, tenGodOf, voidBranchesOf } from "./rules";
 import { shenshaForGanzhi, type ShenshaContext } from "./shensha";
 import type { AuxiliaryPillarFact, NatalChart, PillarFact, PillarName, RootGrade } from "./contract";
@@ -12,6 +12,7 @@ import type { AuxiliaryPillarFact, NatalChart, PillarFact, PillarName, RootGrade
  */
 export function natalChartOf(localDateTime: string, birthInstant?: string): NatalChart {
   const lunar = solarOf(localDateTime).getLunar();
+  const seasonalLunar = birthInstant ? modelSolarOfInstant(birthInstant).getLunar() : lunar;
   const ec = lunar.getEightChar();
   const dayMasterStem = ec.getDayGan();
   const yearMonth = birthInstant
@@ -58,6 +59,7 @@ export function natalChartOf(localDateTime: string, birthInstant?: string): Nata
     seasonalProgressPermille: birthInstant
       ? seasonalProgressPermilleAtInstant(birthInstant)
       : seasonalProgressPermille(localDateTime, lunar.getPrevJie().getSolar().toYmdHms(), lunar.getNextJie().getSolar().toYmdHms()),
+    seasonalQi: seasonalLunar.getPrevQi().getName(),
     voidBranches,
     roots: pillars.flatMap((pillar) => pillar.hiddenStemFacts
       .filter((hidden) => hidden.element === STEM_ELEMENTS[dayMasterStem as keyof typeof STEM_ELEMENTS])

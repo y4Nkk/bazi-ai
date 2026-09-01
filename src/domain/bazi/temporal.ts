@@ -42,7 +42,7 @@ export function transitPillarsAt(table: SegmentTable, evalWallClock: string, eva
   return { year: yearGZ, month: monthGZ, day: dayGZ, hour: hourPillarFor(hourDay, index), luck: activeLuckPillar({ luck }, evalInstant) };
 }
 
-/** Re-runs relations and favorable/adverse evidence at every temporal layer. */
+/** Re-runs relations and the ordered natal directives at every temporal layer. */
 export function assessTemporal(args: {
   input: BirthInput;
   natal: NatalChart;
@@ -52,9 +52,20 @@ export function assessTemporal(args: {
   const { input, natal, judgment, transit } = args;
   const evidence = ruleHitsFromRelations(temporalRelationsOf(natal, transit));
   for (const { layer, element } of temporalElements(transit)) {
-    const severity = TEMPORAL_LAYER_WEIGHT[layer] >= 5 ? 3 : TEMPORAL_LAYER_WEIGHT[layer] >= 2 ? 2 : 1;
-    if (judgment.favorableElements.includes(element)) evidence.push(ruleHit("FAVOURABLE_ELEMENT", "support", severity, layer, [layer, element]));
-    if (judgment.adverseElements.includes(element)) evidence.push(ruleHit("ADVERSE_ELEMENT", "pressure", severity, layer, [layer, element]));
+    const adverseSeverity = TEMPORAL_LAYER_WEIGHT[layer] >= 5 ? 3 : TEMPORAL_LAYER_WEIGHT[layer] >= 2 ? 2 : 1;
+    const directive = judgment.elementDirectives.find((item) => item.element === element);
+    if (directive) {
+      const source = directive.sources.includes("climatePrimary")
+        ? "CLIMATE_PRIMARY_ELEMENT"
+        : directive.sources.includes("climateSecondary")
+          ? "CLIMATE_SECONDARY_ELEMENT"
+          : directive.sources.includes("special")
+            ? "SPECIAL_ELEMENT"
+            : directive.sources.includes("balance") ? "BALANCE_ELEMENT" : "REMEDY_ELEMENT";
+      const severity = directive.rank === 1 ? 3 : directive.rank === 2 ? 2 : 1;
+      evidence.push(ruleHit(source, "support", severity, layer, [layer, element, `优先级${directive.rank}`]));
+    }
+    if (judgment.adverseElements.includes(element)) evidence.push(ruleHit("ADVERSE_ELEMENT", "pressure", adverseSeverity, layer, [layer, element]));
   }
   // Every period retains the original chart's theme. The current layers can
   // then qualify or contradict it, but can never manufacture a strong claim

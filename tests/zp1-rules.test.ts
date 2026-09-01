@@ -18,7 +18,7 @@ const input: BirthInput = {
 };
 
 describe("ZP-1 natal judgment", () => {
-  it("derives one primary structure, qi evidence, and a closed favorable-element policy", () => {
+  it("derives one primary structure, qi evidence, and a closed ordered directive policy", () => {
     const natal = natalChartOf("1990-05-15T14:00:00");
     const qi = assessQi(natal);
     const relations = natalRelationsOf(natal);
@@ -28,8 +28,9 @@ describe("ZP-1 natal judgment", () => {
     expect(natal.annotations.every((annotation) => annotation.code.startsWith("SHENSHA_"))).toBe(true);
     expect(qi.evidence.some((reason) => reason.code.startsWith("SHENSHA_"))).toBe(false);
     expect(natal.roots.every((root) => ["residual", "middle", "main", "prosperous"].includes(root.grade))).toBe(true);
-    expect(judgment.favorableElements.length).toBeGreaterThan(0);
-    expect(judgment.adverseElements.some((element) => judgment.favorableElements.includes(element))).toBe(false);
+    expect(judgment.elementDirectives.length).toBeGreaterThan(0);
+    expect(judgment.climate.primaryStems.length).toBeGreaterThan(0);
+    expect(judgment.adverseElements.some((element) => judgment.elementDirectives.some((directive) => directive.element === element))).toBe(false);
   });
 });
 

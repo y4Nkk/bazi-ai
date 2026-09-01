@@ -122,11 +122,20 @@ export function ProfessionalPanel({
 
         {tab === "evidence" ? (
           <div className="flex flex-col gap-5">
-            <dl className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <Fact label="主格" value={`${snapshot.judgment.primaryStructure} · ${structureStatus(snapshot.judgment.structureStatus)}`} />
               <Fact label="格局锚点" value={snapshot.judgment.structureAnchor} />
-              <Fact label="调候所需" value={snapshot.judgment.climateNeed ?? "无"} />
+              <Fact label="调候主取" value={snapshot.judgment.climate.primaryStems.join("、")} />
+              <Fact label="调候次取" value={snapshot.judgment.climate.secondaryStems.join("、") || "无"} />
             </dl>
+            <section className="flex flex-col gap-2 rounded-sm border border-bazi-border-soft bg-bazi-surface-muted p-3" aria-label="穷通宝鉴调候依据">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 className={TEXT.label}>调候原典依据</h3>
+                <a className={`${TEXT.micro} underline`} href={snapshot.judgment.climate.source.url} target="_blank" rel="noreferrer">查看原文</a>
+              </div>
+              <p className={TEXT.bodySm}>{snapshot.judgment.climate.source.work} · {snapshot.judgment.climate.source.section} · {snapshot.judgment.climate.source.locator}</p>
+              <p className={TEXT.caption}>命中条款 {snapshot.judgment.climate.clauseId}；条件 {snapshot.judgment.climate.matchedConditions.join("、")}</p>
+            </section>
             <EvidenceList evidence={detail.evidence} />
             <ClassicalEvidenceList />
           </div>

@@ -28,7 +28,7 @@ function relevant(hit: RuleHit, target: Element | null, dimension: Dimension): b
   if (dimension === "overall") return true;
   if (!hit.domainRelevance.includes(dimension)) return false;
   if (!target || hit.subjects.includes(target)) return true;
-  return code.startsWith("STRUCTURE") || code.startsWith("QI_") || code.startsWith("CLIMATE") || code.startsWith("REMEDY") || code.startsWith("ZHI_CHONG") || code.startsWith("ZHI_XING") || code.startsWith("FUYIN") || code.startsWith("FANYIN") || code.startsWith("ZHI_LIUHE") || code.startsWith("ZHI_SANHE") || code.startsWith("ZHI_BANHE") || code.startsWith("ZHI_GONGHE") || code.startsWith("ZHI_SANHUI");
+  return code.startsWith("STRUCTURE") || code.startsWith("QI_") || code.startsWith("CLIMATE") || code.startsWith("SPECIAL") || code.startsWith("BALANCE") || code.startsWith("REMEDY") || code.startsWith("ZHI_CHONG") || code.startsWith("ZHI_XING") || code.startsWith("FUYIN") || code.startsWith("FANYIN") || code.startsWith("ZHI_LIUHE") || code.startsWith("ZHI_SANHE") || code.startsWith("ZHI_BANHE") || code.startsWith("ZHI_GONGHE") || code.startsWith("ZHI_SANHUI");
 }
 
 function confidenceFor(hits: RuleHit[]): DomainVerdict["confidence"] {

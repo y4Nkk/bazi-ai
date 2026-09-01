@@ -14,7 +14,17 @@ const SELECTION: AnalyzeSelection = {
   dayMasterElement: "金",
   luckDirection: "顺行",
   primaryStructure: "七杀格",
-  favorableElements: ["土", "金"],
+  climate: {
+    clauseId: "qtb:庚:巳:base",
+    primaryStems: ["壬"],
+    secondaryStems: ["戊", "丙"],
+    matchedConditions: ["月令基础条款"],
+    source: { work: "《穷通宝鉴》", section: "论庚金·三夏庚金·4月庚金", locator: "4月条" },
+  },
+  elementDirectives: [
+    { element: "水", rank: 1, sources: ["climatePrimary"] },
+    { element: "土", rank: 2, sources: ["climateSecondary"] },
+  ],
   selectedPeriod: {
     resolution: "day",
     dimension: "overall",

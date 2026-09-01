@@ -32,7 +32,6 @@ const RULE_SUBJECT_VOCABULARIES: Record<string, Record<string, string>> = {
   QI_MONTH_COMMAND: { early: "初段", middle: "中段", late: "末段" },
   QI_ROOT: { main: "本气根", middle: "中气根", residual: "余气根", prosperous: "旺根" },
   QI_ROOT_DISRUPTED: { formed: "成立", blocked: "受阻", contested: "争用", untransformed: "未化", broken: "被破" },
-  QI_CLIMATE: { cold: "寒", balanced: "中和", warm: "暖", dry: "燥", wet: "湿" },
   QI_FLOW: { continuous: "全通", partial: "半通", blocked: "受阻" },
 };
 

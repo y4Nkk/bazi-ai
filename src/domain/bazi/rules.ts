@@ -18,6 +18,7 @@ import { ganzhiIndexOf } from "./calendar";
 import { DIMENSION_KEYS, type NatalChart, type RuleHit, type TemporalLayer, type TransitPillars } from "./contract";
 import { SHENSHA_EVIDENCE } from "./shensha-evidence";
 import { CLASSICAL_EVIDENCE } from "./classical-evidence";
+import { QIONGTONG_CLIMATE_RULES } from "./qiong-tong-climate";
 
 export const HIDDEN_STEM_WEIGHTS: Record<EarthlyBranch, Array<[HeavenlyStem, number]>> = {
   子: [["癸", 10]],
@@ -148,7 +149,12 @@ const RULE_LABELS: Record<string, string> = {
   SHENG_DM: "生日主",
   KE_DM: "克日主",
   BIJIAN: "比劫帮身",
-  FAVOURABLE_ELEMENT: "喜用五行到位",
+  CLIMATE_RULE: "穷通调候条款",
+  CLIMATE_PRIMARY_ELEMENT: "调候主取到位",
+  CLIMATE_SECONDARY_ELEMENT: "调候次取到位",
+  SPECIAL_ELEMENT: "特殊格局取用到位",
+  BALANCE_ELEMENT: "扶抑取用到位",
+  REMEDY_ELEMENT: "通关救应到位",
   ADVERSE_ELEMENT: "忌神五行显现",
   LUCK_SUPPORT: "大运扶助",
   LUCK_PRESSURE: "大运施压",
@@ -159,10 +165,7 @@ const RULE_LABELS: Record<string, string> = {
   QI_ROOT_DISRUPTED: "日主根气受扰",
   QI_FOLLOW_BLOCKED: "从格生扶未净",
   STRUCTURE: "命局格局",
-  CLIMATE: "调候所需",
-  REMEDY: "通关救应",
   QI_FLOW: "五行流通",
-  QI_CLIMATE: "寒暖燥湿",
   ROOT: "日主根气",
   STRUCTURE_RESCUE: "格局救应",
   STRUCTURE_IMPAIR: "格局受损",
@@ -204,7 +207,7 @@ export function ruleHit(
 }
 
 export function ruleDomains(code: string): typeof DIMENSION_KEYS[number][] {
-  if (code.startsWith("QI_") || code.startsWith("CLIMATE") || code.startsWith("REMEDY")) return ["overall", "personality", "health"];
+  if (code.startsWith("QI_") || code.startsWith("CLIMATE") || code.startsWith("BALANCE") || code.startsWith("REMEDY")) return ["overall", "personality", "health"];
   if (code.startsWith("STRUCTURE")) return ["overall", "career", "wealth", "study"];
   if (code.startsWith("ZHI_CHONG") || code.startsWith("ZHI_XING") || code.startsWith("ZHI_HAI") || code.startsWith("ZHI_PO") || code.startsWith("FANYIN") || code.startsWith("TIANKEDICHONG")) return ["overall", "relationship", "family", "health", "mobility"];
   if (code.startsWith("ZHI_LIUHE") || code.startsWith("ZHI_SANHE") || code.startsWith("ZHI_BANHE") || code.startsWith("ZHI_GONGHE") || code.startsWith("ZHI_SANHUI")) return ["overall", "relationship", "family", "mobility"];
@@ -232,6 +235,7 @@ export const RULE_CATALOG_MANIFEST = Object.freeze({
   branchRelations: { CHONG, LIUHE, HAI, PO, XING: [...XING], SANHE, SANHUI },
   stemRelations: { GAN_WUHE: [...GAN_WUHE], GAN_CHONG: [...GAN_CHONG] },
   trueTransformMonths: TRUE_TRANSFORM_MONTHS,
+  qiongTongClimate: QIONGTONG_CLIMATE_RULES,
   yangRen: YANG_REN_BRANCH,
   shensha: SHENSHA,
   shenshaEvidence: SHENSHA_EVIDENCE,
