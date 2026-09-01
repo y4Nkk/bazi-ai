@@ -173,7 +173,7 @@ This file records verified, reusable project decisions. It is not a user-profile
 
 ## 2026-08-31: ZP-1 calendar-derived structure examples
 
-- Structure coverage is no longer limited to fabricated Qi or pillar fields. `tests/structure.test.ts` now derives all five special structures from real civil-calendar samples through natal → Qi → relation → structure: 从强（2018-07-05）、化气（2018-06-30）、从儿（2008-01-01）、从财（2017-06-24）、从官杀（2018-07-10）。
+- This earlier permissive special-structure fixture set is superseded by the 2026-09-01 classical evidence pass below. Only 从强（2018-07-05）remains a positive special-structure regression; the prior 化气、从儿、从财、从官杀 samples now deliberately return to their month-command structures because they retain a failed strict gate.
 - The same suite derives ordinary-state evidence through the full calendar path: 1900-01-01 yields an impaired 正印格; 1900-01-03 yields a rescued 正官格. These are rule-regression fixtures, not claims about real people or predictive validation.
 - Verified: `npm test -- --reporter=dot` (15 files, 97 passing).
 
@@ -291,3 +291,10 @@ This file records verified, reusable project decisions. It is not a user-profile
 - `src/domain/bazi/shensha-evidence.ts` is the single owner of every active shensha code's source grade, work, section, public link, and lookup basis. Each emitted annotation carries that immutable record; the professional shensha view discloses it, and cache validation rejects legacy snapshots without it.
 - The literature directory is `docs/shensha-evidence.md`: it lists all 30 current runtime entries plus the complete 23-section table of 《三命通会》卷三. Directly located checks newly add 德秀贵人 and 六厄; entries with only a project table or a disputed interpretation remain explicitly marked 待原典核验 or 流派变体, never as confirmed literature.
 - Verified: full Vitest suite (22 files, 133 tests), `npm run typecheck`, `npm run build`, `git diff --check`; the desktop browser walkthrough passed the new literature-grade disclosure assertion before an unrelated later segment of the long existing walkthrough stopped making progress.
+
+## 2026-09-01: classical evidence pass and strict special-structure gates
+
+- `TRUE_TRANSFORM_MONTHS` now freezes the five 《滴天髓·化气》 month-command gates. A 化气格 additionally requires an already formed 五合, exactly one of each paired stem, and stronger transform qi; a visible five-combination alone returns to the month-command structure. Weak 从儿/从财/从官杀 candidates now require no root and no non-day pillar 比劫/印星 stem or hidden-stem support; otherwise the emitted evidence is `QI_FOLLOW_BLOCKED` and the ordinary structure remains authoritative.
+- `docs/classical-evidence.md` and the professional “规则依据” tab distinguish the implemented monthly-structure/化从/旺衰 layers from the still-unencoded 《穷通宝鉴》 ten-day-master × twelve-month climate table. The current coarse climate output must not be described as a full 《穷通宝鉴》 implementation.
+- Shensha evidence was corrected rather than inflated: 天厨、华盖、将星 are now direct primary-text entries; 福星、飞刃 are visible 流派变体, while 国印、天医 remain pending. The annotation-only boundary is unchanged.
+- Verified: all 22 Vitest files (136 tests), `npm run typecheck`, `npm run build`, `git diff --check`; desktop browser walkthrough passed the new literature-boundary assertion, and the completed walkthrough generated desktop/mobile screenshots (its final detached exit code was not observable after the tool timeout).

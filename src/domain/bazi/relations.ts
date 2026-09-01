@@ -4,7 +4,7 @@
  * until seasonal support, transform visibility, and absence of a clash agree.
  */
 import { BRANCH_ELEMENTS, EARTHLY_BRANCHES, STEM_ELEMENTS, controls, generates, type EarthlyBranch, type Element, type HeavenlyStem } from "./constants";
-import { CHONG, GAN_CHONG, GAN_WUHE, HAI, LIUHE, PO, SANHE, SANHUI, XING, ruleDomains, ruleLabel } from "./rules";
+import { CHONG, GAN_CHONG, GAN_WUHE, HAI, LIUHE, PO, SANHE, SANHUI, TRUE_TRANSFORM_MONTHS, XING, ruleDomains, ruleLabel } from "./rules";
 import type { NatalChart, RelationEdge, RelationState, RuleHit } from "./contract";
 import type { TemporalLayer, TransitPillars } from "./contract";
 
@@ -18,6 +18,12 @@ interface Subject {
   layer: "原局";
   stem: string;
   branch: EarthlyBranch;
+}
+
+function transformMonthsFor(stemA: string, stemB: string): readonly EarthlyBranch[] {
+  const pair = Object.keys(TRUE_TRANSFORM_MONTHS).find((candidate) => candidate.includes(stemA) && candidate.includes(stemB));
+  if (!pair) throw new Error(`缺少天干五合月令表项: ${stemA}${stemB}`);
+  return TRUE_TRANSFORM_MONTHS[pair];
 }
 
 function mappedPair<T>(table: Record<string, T>, a: string, b: string): T {
@@ -38,6 +44,7 @@ function stateForTransform(args: {
   visibleStems?: string[];
   target: Element;
   competing: boolean;
+  seasonalSupport?: boolean;
   ignoreInternalSoftBlockers?: boolean;
 }): { state: RelationState; blockers: string[] } {
   const breakBlockers = args.members.flatMap((member) => {
@@ -58,7 +65,7 @@ function stateForTransform(args: {
   });
   if (args.competing) return { state: "contested", blockers: ["同一支同时参与合局与六合", ...softBlockers] };
   if (softBlockers.length > 0) return { state: "blocked", blockers: softBlockers };
-  const seasonalSupport = BRANCH_ELEMENTS[args.seasonalBranch] === args.target;
+  const seasonalSupport = args.seasonalSupport ?? BRANCH_ELEMENTS[args.seasonalBranch] === args.target;
   const visibleInTransit = args.visibleStems?.some((stem) => STEM_ELEMENTS[stem as HeavenlyStem] === args.target) ?? false;
   return seasonalSupport && (hasTransformVisibility(args.natal, args.target) || visibleInTransit)
     ? { state: "formed", blockers: [] }
@@ -107,7 +114,7 @@ export function natalRelationsOf(natal: NatalChart): RelationEdge[] {
       }
       if (GAN_WUHE.has(a.stem + b.stem)) {
         const target = mappedPair(GANHE_ELEMENT, a.stem, b.stem);
-        const resolved = stateForTransform({ natal, members: [a.branch, b.branch], availableBranches: branches, seasonalBranch: natal.pillars[1].branch as EarthlyBranch, target, competing: false });
+        const resolved = stateForTransform({ natal, members: [a.branch, b.branch], availableBranches: branches, seasonalBranch: natal.pillars[1].branch as EarthlyBranch, target, competing: false, seasonalSupport: transformMonthsFor(a.stem, b.stem).includes(natal.pillars[1].branch as EarthlyBranch) });
         result.push(edge({ code: `GAN_WUHE:${a.stem}${b.stem}`, state: resolved.state, polarity: polarityFor(resolved.state, "support"), severity: 2, subjects: pairSubjects, transformElement: target, blockers: resolved.blockers }));
       }
       if (GAN_CHONG.has(a.stem + b.stem)) result.push(edge({ code: `GAN_CHONG:${a.stem}${b.stem}`, state: "formed", polarity: "pressure", severity: 2, subjects: pairSubjects, transformElement: null, blockers: [] }));
@@ -197,7 +204,7 @@ export function temporalRelationsOf(natal: NatalChart, transit: TransitPillars):
       }
       if (GAN_WUHE.has(a.stem + b.stem)) {
         const target = mappedPair(GANHE_ELEMENT, a.stem, b.stem);
-        const resolved = stateForTransform({ natal, members: [a.branch, b.branch], availableBranches: all.map((subject) => subject.branch), seasonalBranch: natal.pillars[1].branch as EarthlyBranch, visibleStems: all.map((subject) => subject.stem), target, competing: false });
+        const resolved = stateForTransform({ natal, members: [a.branch, b.branch], availableBranches: all.map((subject) => subject.branch), seasonalBranch: natal.pillars[1].branch as EarthlyBranch, visibleStems: all.map((subject) => subject.stem), target, competing: false, seasonalSupport: transformMonthsFor(a.stem, b.stem).includes(natal.pillars[1].branch as EarthlyBranch) });
         if (pairHasMoving || resolved.state === "blocked" || resolved.state === "contested" || resolved.state === "broken") result.push(temporalEdge({ code: `GAN_WUHE:${a.stem}${b.stem}`, state: resolved.state, polarity: polarityFor(resolved.state, "support"), severity: 2, subjects, transformElement: target, blockers: resolved.blockers }, combinationLayer));
       }
       if (pairHasMoving && GAN_CHONG.has(a.stem + b.stem)) result.push(temporalEdge({ code: `GAN_CHONG:${a.stem}${b.stem}`, state: "formed", polarity: "pressure", severity: 2, subjects, transformElement: null, blockers: [] }, layer));

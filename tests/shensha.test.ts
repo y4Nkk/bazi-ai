@@ -47,6 +47,20 @@ describe("closed shensha annotation catalog", () => {
     });
   });
 
+  it("upgrades only lookup tables that match newly located primary texts", () => {
+    const tianChu = shenshaForGanzhi(context, "丁巳").find((fact) => fact.code === "SHENSHA_TIAN_CHU");
+    const huaGai = shenshaForGanzhi(context, "丁戌").find((fact) => fact.code === "SHENSHA_HUA_GAI");
+    const jiangXing = shenshaForGanzhi(context, "丁午").find((fact) => fact.code === "SHENSHA_JIANG_XING");
+    const fuXing = shenshaForGanzhi(context, "丁寅").find((fact) => fact.code === "SHENSHA_FU_XING");
+    const feiRen = shenshaForGanzhi(context, "丁酉").find((fact) => fact.code === "SHENSHA_FEI_REN");
+
+    expect(tianChu?.evidence).toMatchObject({ grade: "原典直引", work: "《五行精纪》", section: "天厨格" });
+    expect(huaGai?.evidence).toMatchObject({ grade: "原典直引", work: "《五行精纪》", section: "论华盖" });
+    expect(jiangXing?.evidence).toMatchObject({ grade: "原典直引", work: "《钦定古今图书集成》" });
+    expect(fuXing?.evidence.grade).toBe("流派变体");
+    expect(feiRen?.evidence.grade).toBe("流派变体");
+  });
+
   it("attaches a closed evidence record to every emitted annotation", () => {
     for (const fact of shenshaForGanzhi(context, "丁卯")) {
       expect(["原典直引", "流派变体", "待原典核验"]).toContain(fact.evidence.grade);

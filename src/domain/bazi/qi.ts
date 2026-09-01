@@ -37,6 +37,15 @@ function seasonStage(progressPermille: number): keyof typeof QI_RULES.monthComma
   return progressPermille < 334 ? "early" : progressPermille < 667 ? "middle" : "late";
 }
 
+/** A true 从格 cannot retain an external 比劫 or 印星 support channel. */
+function hasExternalSupport(natal: NatalChart, dayElement: Element, resource: Element): boolean {
+  return natal.pillars.some((pillar) => pillar.name !== "day" && (
+    pillar.stemElement === dayElement ||
+    pillar.stemElement === resource ||
+    pillar.hiddenStemFacts.some((hidden) => hidden.element === dayElement || hidden.element === resource)
+  ));
+}
+
 /** Closed, integer-only ledger used by all later structure and favorable rules. */
 export function assessQi(natal: NatalChart, relations: RelationEdge[] = []): QiState {
   const values = Object.fromEntries(ELEMENTS.map((element) => [element, 0])) as Record<Element, number>;
@@ -85,10 +94,18 @@ export function assessQi(natal: NatalChart, relations: RelationEdge[] = []): QiS
   const dominant = ELEMENTS.reduce((best, element) => values[element] > values[best] ? element : best, ELEMENTS[0]);
   const total = ELEMENTS.reduce((sum, element) => sum + values[element], 0);
   const isDominant = total > 0 && values[dominant] * 1000 >= total * QI_RULES.specialDominancePermille;
-  const followCandidate: QiState["followCandidate"] = isDominant && roots === 0 && dayMasterStrength === "extremeWeak"
+  const weakFollowCandidate: QiState["followCandidate"] = isDominant && roots === 0 && dayMasterStrength === "extremeWeak"
     ? dominant === roles.output ? "followOutput" : dominant === roles.wealth ? "followWealth" : dominant === roles.authority ? "followAuthority" : "none"
-    : isDominant && dayMasterStrength === "extremeStrong" && dominant === dayElement ? "followStrong"
-      : "none";
+    : "none";
+  const followCandidate: QiState["followCandidate"] = weakFollowCandidate !== "none" && hasExternalSupport(natal, dayElement, roles.resource)
+    ? "none"
+    : weakFollowCandidate !== "none"
+      ? weakFollowCandidate
+      : isDominant && dayMasterStrength === "extremeStrong" && dominant === dayElement ? "followStrong"
+        : "none";
+  if (weakFollowCandidate !== "none" && followCandidate === "none") {
+    evidence.push(natalHit("QI_FOLLOW_BLOCKED", "context", 2, ["外柱见比劫或印星"]));
+  }
   const climate = climateFor(seasonalElement);
   const flow = flowFor(values);
   evidence.push(natalHit("QI_CLIMATE", "context", 2, [climate.temperature, climate.moisture]));

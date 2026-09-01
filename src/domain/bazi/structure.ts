@@ -1,5 +1,6 @@
 /** Single primary-structure adjudication: special first, then month command. */
-import { YANG_REN_BRANCH, ruleHit } from "./rules";
+import type { EarthlyBranch } from "./constants";
+import { TRUE_TRANSFORM_MONTHS, YANG_REN_BRANCH, ruleHit } from "./rules";
 import type { NatalChart, QiState, RelationEdge, RuleHit } from "./contract";
 
 export interface StructureDecision {
@@ -31,9 +32,28 @@ function exposedGods(natal: NatalChart): string[] {
   return natal.pillars.filter((pillar) => pillar.name !== "day").map((pillar) => pillar.stemTenGod);
 }
 
+function transformPair(edge: RelationEdge): string | null {
+  if (!edge.code.startsWith("GAN_WUHE:")) return null;
+  const stems = edge.code.slice(-2);
+  return Object.keys(TRUE_TRANSFORM_MONTHS).find((pair) => pair.includes(stems[0]) && pair.includes(stems[1])) ?? null;
+}
+
+/** 化气格只接受独相作合、月令当令且化神得势的已成五合。 */
+function trueTransformOf(natal: NatalChart, qi: QiState, relations: RelationEdge[]): RelationEdge | null {
+  return relations.find((edge) => {
+    const pair = transformPair(edge);
+    if (!pair || edge.state !== "formed" || edge.transformElement !== qi.seasonalElement) return false;
+    const [first, second] = pair;
+    const stems = natal.pillars.map((pillar) => pillar.stem);
+    return stems.filter((stem) => stem === first).length === 1 &&
+      stems.filter((stem) => stem === second).length === 1 &&
+      TRUE_TRANSFORM_MONTHS[pair].includes(natal.pillars[1].branch as EarthlyBranch) &&
+      qi.elementStrength[qi.seasonalElement] > qi.elementStrength[natal.dayMaster.element];
+  }) ?? null;
+}
+
 function specialStructure(natal: NatalChart, qi: QiState, relations: RelationEdge[]): string | null {
-  const transform = relations.find((edge) => edge.code.startsWith("GAN_WUHE") && edge.state === "formed" && edge.transformElement === qi.seasonalElement);
-  if (transform && qi.elementStrength[qi.seasonalElement] > qi.elementStrength[natal.dayMaster.element]) return "化气格";
+  if (trueTransformOf(natal, qi, relations)) return "化气格";
   if (qi.followCandidate === "followStrong") return "从强格";
   if (qi.followCandidate === "followOutput") return "从儿格";
   if (qi.followCandidate === "followWealth") return "从财格";

@@ -27,13 +27,15 @@ describe("structure and favorable precedence", () => {
     expect(judgment.favorableElements).toContain(qi.drainingElements[1]);
   });
 
-  it("derives every special structure from an actual calendar-derived four-pillar sample", () => {
+  it("keeps only calendar-derived special structures that pass the stricter gates", () => {
     const cases = [
       ["2018-07-05T12:00", "从强格"],
-      ["2018-06-30T12:00", "化气格"],
-      ["2008-01-01T12:00", "从儿格"],
-      ["2017-06-24T12:00", "从财格"],
-      ["2018-07-10T12:00", "从官杀格"],
+      // This chart has a visible five-combination but does not satisfy the
+      // newly required 月令 + 独相作合 gate, so it returns to its month-command structure.
+      ["2018-06-30T12:00", "偏财格"],
+      ["2008-01-01T12:00", "伤官格"],
+      ["2017-06-24T12:00", "正财格"],
+      ["2018-07-10T12:00", "七杀格"],
     ] as const;
     for (const [dateTime, expected] of cases) {
       const candidate = natalChartOf(dateTime);

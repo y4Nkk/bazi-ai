@@ -281,6 +281,12 @@ check(
   !/\b(GAN_|ZHI_|QI_MONTH_COMMAND|early|middle|late|main|residual|prosperous|cold|balanced|warm|dry|wet)\w*/.test(evidenceDetailText ?? ""),
   "desktop: professional evidence hides internal identifiers and enum values",
 );
+check(
+  evidenceDetailText?.includes("文献判读范围") === true &&
+    evidenceDetailText?.includes("待逐条审校") === true &&
+    evidenceDetailText?.includes("十日干×十二月令") === true,
+  "desktop: professional evidence distinguishes implemented rules from the pending climate table",
+);
 await page.screenshot({ path: join(OUT_DIR, "desktop-professional-detail.png"), fullPage: true });
 
 // After generation the form collapses into a one-line birth summary.

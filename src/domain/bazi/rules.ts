@@ -17,6 +17,7 @@ import {
 import { ganzhiIndexOf } from "./calendar";
 import { DIMENSION_KEYS, type NatalChart, type RuleHit, type TemporalLayer, type TransitPillars } from "./contract";
 import { SHENSHA_EVIDENCE } from "./shensha-evidence";
+import { CLASSICAL_EVIDENCE } from "./classical-evidence";
 
 export const HIDDEN_STEM_WEIGHTS: Record<EarthlyBranch, Array<[HeavenlyStem, number]>> = {
   子: [["癸", 10]],
@@ -64,6 +65,18 @@ export const SANHE: EarthlyBranch[][] = [["寅", "午", "戌"], ["巳", "酉", "
 export const SANHUI: EarthlyBranch[][] = [["寅", "卯", "辰"], ["巳", "午", "未"], ["申", "酉", "戌"], ["亥", "子", "丑"]];
 export const GAN_WUHE = new Set(["甲己", "己甲", "乙庚", "庚乙", "丙辛", "辛丙", "丁壬", "壬丁", "戊癸", "癸戊"]);
 export const GAN_CHONG = new Set(["甲庚", "庚甲", "乙辛", "辛乙", "丙壬", "壬丙", "丁癸", "癸丁"]);
+
+/**
+ * 《滴天髓·化气》所列五合化气的月令门槛。它只定义“可以审查
+ * 化气”的月份；独相作合、无争合和化神得势仍由 structure.ts 合并裁决。
+ */
+export const TRUE_TRANSFORM_MONTHS: Record<string, readonly EarthlyBranch[]> = {
+  甲己: ["辰", "未", "戌", "丑"],
+  乙庚: ["申", "酉", "戌"],
+  丙辛: ["亥", "子", "丑"],
+  丁壬: ["寅", "卯", "辰"],
+  戊癸: ["巳", "午", "未"],
+};
 
 /** 月令劫财仅在此支位时取羊刃格；其余仍为月劫。 */
 export const YANG_REN_BRANCH: Record<HeavenlyStem, EarthlyBranch> = {
@@ -144,6 +157,7 @@ const RULE_LABELS: Record<string, string> = {
   QI_ROOT: "日主通根",
   QI_NO_ROOT: "日主无根",
   QI_ROOT_DISRUPTED: "日主根气受扰",
+  QI_FOLLOW_BLOCKED: "从格生扶未净",
   STRUCTURE: "命局格局",
   CLIMATE: "调候所需",
   REMEDY: "通关救应",
@@ -217,9 +231,11 @@ export const RULE_CATALOG_MANIFEST = Object.freeze({
   qi: QI_RULES,
   branchRelations: { CHONG, LIUHE, HAI, PO, XING: [...XING], SANHE, SANHUI },
   stemRelations: { GAN_WUHE: [...GAN_WUHE], GAN_CHONG: [...GAN_CHONG] },
+  trueTransformMonths: TRUE_TRANSFORM_MONTHS,
   yangRen: YANG_REN_BRANCH,
   shensha: SHENSHA,
   shenshaEvidence: SHENSHA_EVIDENCE,
+  classicalEvidence: CLASSICAL_EVIDENCE,
   ruleLabels: RULE_LABELS,
   nayin: NAYIN_BY_PAIR,
   lifeStages: { start: LIFE_STAGE_START, stages: LIFE_STAGES },

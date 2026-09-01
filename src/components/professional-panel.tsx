@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { DIMENSION_LABELS, type ChartSnapshot, type RuleHit, type TrendPeriod } from "@/domain/bazi/contract";
 import { professionalDetailOf, type ProfessionalPillarFact } from "@/domain/bazi/professional";
+import { CLASSICAL_EVIDENCE } from "@/domain/bazi/classical-evidence";
 import { TEXT } from "@/lib/typography";
 import { Button } from "./controls";
 import { ELEMENT_TEXT } from "./bazi-presentation";
@@ -127,15 +128,35 @@ export function ProfessionalPanel({
               <Fact label="调候所需" value={snapshot.judgment.climateNeed ?? "无"} />
             </dl>
             <EvidenceList evidence={detail.evidence} />
-            <div className="rounded-sm border border-bazi-border-soft bg-bazi-surface-muted p-3">
-              <p className={TEXT.label}>古籍规则边界</p>
-              <p className={TEXT.caption}>
-                神煞查表参考《三命通会》卷三的明确条目；ZP-1 的判断主链仍是月令、根气、透干、关系裁决、格局与喜忌。页面不复制未经校核的断语，也不把古籍人生结论自动套到个人身上。
-              </p>
-            </div>
+            <ClassicalEvidenceList />
           </div>
         ) : null}
       </div>
+    </section>
+  );
+}
+
+function ClassicalEvidenceList() {
+  return (
+    <section className="flex flex-col gap-2 border-t border-bazi-border-soft pt-4">
+      <div>
+        <h3 className={TEXT.overline}>文献判读范围</h3>
+        <p className={TEXT.caption}>每一层说明来源与接入边界；没有逐条冻结的原文，不会被伪装为已实现的古籍规则。</p>
+      </div>
+      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {CLASSICAL_EVIDENCE.map((entry) => (
+          <li key={entry.area} className="rounded-sm border border-bazi-border-soft bg-bazi-surface-muted p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className={TEXT.label}>{entry.area}</span>
+              <span className={TEXT.micro}>状态：{entry.implementation}</span>
+            </div>
+            <a className={`${TEXT.caption} underline`} href={entry.url} target="_blank" rel="noreferrer">
+              {entry.source}·{entry.section}
+            </a>
+            <p className={TEXT.micro}>{entry.boundary}</p>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
