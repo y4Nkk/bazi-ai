@@ -1,11 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { luckInfoOf } from "../src/domain/bazi/luck";
+import { civilDateTimeOf } from "../src/domain/bazi/astronomy";
+import { buildSegmentTable } from "../src/domain/bazi/calendar";
+import { transitPillarsAt } from "../src/domain/bazi/temporal";
+
+function instantBefore(instant: string): string {
+  return new Date(Date.parse(instant) - 1_000).toISOString().slice(0, 19) + "Z";
+}
 
 describe("luck-cycle direction", () => {
   it("runs forward for a yang-year male and backward for a yin-year male", () => {
     // 1984 甲子 (yang stem 甲), 1985 乙丑 (yin stem 乙).
-    const yangMale = luckInfoOf("1984-06-01T10:00", "male");
-    const yinMale = luckInfoOf("1985-06-01T10:00", "male");
+    const yangMale = luckInfoOf("1984-06-01T10:00:00+08:00", "Asia/Shanghai", "male");
+    const yinMale = luckInfoOf("1985-06-01T10:00:00+08:00", "Asia/Shanghai", "male");
     expect(yangMale.forward).toBe(true);
     expect(yangMale.directionLabel).toBe("顺行");
     expect(yinMale.forward).toBe(false);
@@ -13,19 +20,19 @@ describe("luck-cycle direction", () => {
   });
 
   it("runs backward for a yang-year female and forward for a yin-year female", () => {
-    expect(luckInfoOf("1984-06-01T10:00", "female").forward).toBe(false);
-    expect(luckInfoOf("1985-06-01T10:00", "female").forward).toBe(true);
+    expect(luckInfoOf("1984-06-01T10:00:00+08:00", "Asia/Shanghai", "female").forward).toBe(false);
+    expect(luckInfoOf("1985-06-01T10:00:00+08:00", "Asia/Shanghai", "female").forward).toBe(true);
   });
 
   it("orders consecutive cycle pillars along the direction", () => {
-    const forward = luckInfoOf("1984-06-01T10:00", "male");
+    const forward = luckInfoOf("1984-06-01T10:00:00+08:00", "Asia/Shanghai", "male");
     const pillars = forward.cycles
       .filter((cycle) => cycle.ganzhi)
       .map((cycle) => cycle.ganzhi as string);
     expect(pillars.length).toBeGreaterThanOrEqual(9);
     expect(pillars[0]).toBe("庚午");
     expect(pillars[1]).toBe("辛未");
-    const backward = luckInfoOf("1984-06-01T10:00", "female");
+    const backward = luckInfoOf("1984-06-01T10:00:00+08:00", "Asia/Shanghai", "female");
     const backPillars = backward.cycles
       .filter((cycle) => cycle.ganzhi)
       .map((cycle) => cycle.ganzhi as string);
@@ -34,8 +41,18 @@ describe("luck-cycle direction", () => {
   });
 
   it("reports the start moment deterministically", () => {
-    const info = luckInfoOf("1984-06-01T10:00", "male");
+    const info = luckInfoOf("1984-06-01T10:00:00+08:00", "Asia/Shanghai", "male");
     expect(info.startDateTime).toBe("1985-11-21T10:00:00");
     expect(info.cycles[1].startAgeDetail).toEqual({ years: 1, months: 5, days: 20 });
+  });
+
+  it("activates the first luck pillar at its exact instant, not its calendar year", () => {
+    const info = luckInfoOf("1984-06-01T10:00:00+08:00", "Asia/Shanghai", "male");
+    const before = instantBefore(info.startInstant);
+    const table = buildSegmentTable("1985-01-01", "1986-12-31");
+    const beforeTransit = transitPillarsAt(table, civilDateTimeOf("Asia/Shanghai", before), before, info);
+    const atTransit = transitPillarsAt(table, civilDateTimeOf("Asia/Shanghai", info.startInstant), info.startInstant, info);
+    expect(beforeTransit.luck).toBeNull();
+    expect(atTransit.luck).toBe(info.cycles[1].ganzhi);
   });
 });

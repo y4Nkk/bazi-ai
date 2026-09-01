@@ -13,29 +13,48 @@ const dimensionEnum = z.enum(DIMENSION_KEYS);
 
 export const AnalysisOutputSchema = z
   .strictObject({
+    /** A response without any active deterministic rule must say so explicitly. */
+    evidenceStatus: z.enum(["cited", "insufficient"]),
     summary: z.string().min(20).max(800),
-    summaryRuleIds: z.array(z.string().min(1).max(180)).min(1).max(12),
+    summaryRuleIds: z.array(z.string().min(1).max(180)).max(12),
     dimensionInterpretations: z
       .array(
         z.strictObject({
           dimension: dimensionEnum,
           interpretation: z.string().min(10).max(600),
-          ruleIds: z.array(z.string().min(1).max(180)).min(1).max(12),
+          ruleIds: z.array(z.string().min(1).max(180)).max(12),
         }),
       )
-      .min(1)
       .max(10)
       .refine((items) => {
         const keys = new Set(items.map((item) => item.dimension));
         return keys.size === items.length;
       }, "dimension 不得重复"),
-    opportunities: z.array(z.string().min(4).max(200)).min(1).max(6),
-    cautions: z.array(z.string().min(4).max(200)).min(1).max(6),
+    opportunities: z.array(z.string().min(4).max(200)).max(6),
+    cautions: z.array(z.string().min(4).max(200)).max(6),
     selectedPeriod: z.strictObject({
       explanation: z.string().min(30).max(1200),
-      ruleIds: z.array(z.string().min(1).max(180)).min(1).max(12),
+      ruleIds: z.array(z.string().min(1).max(180)).max(12),
     }),
     disclaimer: z.string().min(10).max(400),
+  })
+  .superRefine((output, ctx) => {
+    const citations = [
+      ...output.summaryRuleIds,
+      ...output.dimensionInterpretations.flatMap((item) => item.ruleIds),
+      ...output.selectedPeriod.ruleIds,
+    ];
+    if (output.evidenceStatus === "cited" && citations.length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["evidenceStatus"], message: "有依据解读必须引用至少一条 ruleId" });
+    }
+    if (output.evidenceStatus === "insufficient") {
+      if (citations.length > 0) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["evidenceStatus"], message: "证据不足解读不得伪造或引用 ruleId" });
+      }
+      if (!output.summary.includes("当前规则无法确定") || !output.selectedPeriod.explanation.includes("当前规则无法确定")) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["summary"], message: "证据不足解读必须明确说明当前规则无法确定" });
+      }
+    }
   });
 
 export type AnalysisOutput = z.infer<typeof AnalysisOutputSchema>;

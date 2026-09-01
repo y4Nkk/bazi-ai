@@ -1,17 +1,25 @@
 /** Natal four-pillar chart derived from one evaluated wall clock. */
 import { BRANCH_ELEMENTS, STEM_ELEMENTS, type Element } from "./constants";
-import { solarOf } from "./calendar";
+import { monthYearPillarsAtInstant, seasonalProgressPermilleAtInstant, solarOf } from "./calendar";
 import { HIDDEN_STEM_WEIGHTS, SHENSHA, YANG_REN_BRANCH, hiddenStemRank, lifeStageOf, nayinOf, tenGodOf, voidBranchesOf } from "./rules";
 import type { NatalChart, PillarFact, PillarName, RootGrade } from "./contract";
 
-export function natalChartOf(localDateTime: string): NatalChart {
+/**
+ * Day and hour are evaluated from the selected local/true-solar wall clock.
+ * When supplied, the unique actual instant solely owns the year/month
+ * solar-term boundary, which lunar-typescript represents in fixed UTC+08.
+ */
+export function natalChartOf(localDateTime: string, birthInstant?: string): NatalChart {
   const lunar = solarOf(localDateTime).getLunar();
   const ec = lunar.getEightChar();
   const dayMasterStem = ec.getDayGan();
+  const yearMonth = birthInstant
+    ? monthYearPillarsAtInstant(birthInstant)
+    : { yearGZ: ec.getYear(), monthGZ: ec.getMonth() };
 
   const pillars: PillarFact[] = [
-    pillarFact("year", ec.getYear(), dayMasterStem, ec.getYearShiShenGan()),
-    pillarFact("month", ec.getMonth(), dayMasterStem, ec.getMonthShiShenGan()),
+    pillarFact("year", yearMonth.yearGZ, dayMasterStem, tenGodOf(dayMasterStem, yearMonth.yearGZ[0])),
+    pillarFact("month", yearMonth.monthGZ, dayMasterStem, tenGodOf(dayMasterStem, yearMonth.monthGZ[0])),
     pillarFact("day", ec.getDay(), dayMasterStem, "日主"),
     pillarFact("hour", ec.getTime(), dayMasterStem, ec.getTimeShiShenGan()),
   ];
@@ -34,7 +42,9 @@ export function natalChartOf(localDateTime: string): NatalChart {
     elementCounts,
     tenGodCounts,
     monthCommand: pillars[1].hiddenStemFacts[0],
-    seasonalProgressPermille: seasonalProgressPermille(localDateTime, lunar.getPrevJie().getSolar().toYmdHms(), lunar.getNextJie().getSolar().toYmdHms()),
+    seasonalProgressPermille: birthInstant
+      ? seasonalProgressPermilleAtInstant(birthInstant)
+      : seasonalProgressPermille(localDateTime, lunar.getPrevJie().getSolar().toYmdHms(), lunar.getNextJie().getSolar().toYmdHms()),
     voidBranches: voidBranchesOf(pillars[2].ganzhi),
     roots: pillars.flatMap((pillar) => pillar.hiddenStemFacts
       .filter((hidden) => hidden.element === STEM_ELEMENTS[dayMasterStem as keyof typeof STEM_ELEMENTS])

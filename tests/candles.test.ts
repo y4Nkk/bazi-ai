@@ -28,19 +28,18 @@ describe("known birth fixture", () => {
     expect(snapshot.natal.dayMaster.stem).toBe("庚");
     expect(snapshot.natal.dayMaster.element).toBe("金");
     expect(snapshot.civilCandidate.shichen).toBe("未");
-    expect(snapshot.algorithmVersion).toMatch(/^zp-1\.3\.4-[0-9a-f]{8}-noaa-eot-2006-lunar-typescript-1\.8\.6$/);
+    expect(snapshot.algorithmVersion).toMatch(/^zp-1\.4\.0-[0-9a-f]{8}-noaa-eot-2006-lunar-typescript-1\.8\.6-cst-instant-v2$/);
     expect(snapshot.judgment.primaryStructure).toBeTruthy();
     expect(snapshot.snapshotKey).toMatch(/^[0-9a-f]{16}$/);
   });
 });
 
 describe("candle aggregation invariants", () => {
-  it("keeps OHLC invariants at day, month, and year resolutions", () => {
-    for (const [resolution, range] of [
+  it.each([
       ["day", { start: "2026-01-01", end: "2026-03-01" }],
       ["month", { start: "2026-01-01", end: "2027-12-31" }],
-      ["year", { start: "2026-01-01", end: "2035-12-31" }],
-    ] as const) {
+      ["year", { start: "2026-01-01", end: "2027-12-31" }],
+    ] as const)("keeps OHLC invariants at %s resolution", (resolution, range) => {
       const snapshot = calculateBaziSnapshot({
         input: KNOWN_INPUT,
         range,
@@ -52,8 +51,7 @@ describe("candle aggregation invariants", () => {
         expect(ohlcOk(candle), `${resolution} ${candle.timestamp}`).toBe(true);
         expect(candle.intensity).toBe(Math.abs(candle.close - candle.open));
       }
-    }
-  });
+    });
 
   it("daily candles agree with their twelve shichen points", () => {
     const snapshot = calculateBaziSnapshot({

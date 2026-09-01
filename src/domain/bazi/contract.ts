@@ -84,6 +84,9 @@ export interface LuckCycle {
   /** Exact local calculation bounds; end is exclusive. */
   startDateTime: string;
   endDateTime: string;
+  /** Exact IANA-resolved bounds consumed by temporal activation. */
+  startInstant: string;
+  endInstant: string;
   startAgeDetail: { years: number; months: number; days: number };
 }
 
@@ -91,6 +94,7 @@ export interface LuckInfo {
   forward: boolean;
   directionLabel: "顺行" | "逆行";
   startDateTime: string;
+  startInstant: string;
   startAgeLabel: string;
   cycles: LuckCycle[];
 }

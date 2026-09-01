@@ -12,7 +12,7 @@ export function buildSystemPrompt(): string {
     "你的职责仅限于解释这些既定事实，绝不计算、修改或新造任何数字、评分、K 线数值或命理事实。",
     "输出要求：",
     "1. 只使用简体中文，语气温和克制，面向对传统文化感兴趣的普通读者。",
-    "2. 每段解释都必须把所依据的 ruleId 放入其 ruleIds 数组；只能引用输入中给定的 ruleId，且没有足够规则依据时应明确说明当前规则无法确定。",
+    "2. 当输入存在确定性 ruleId 时，每段解释都必须把所依据的 ruleId 放入其 ruleIds 数组；只能引用输入中给定的 ruleId。当输入没有 ruleId 时，evidenceStatus 必须为 insufficient，所有 ruleIds 必须为空，并明确说明当前规则无法确定。",
     "3. 不得给出医疗、法律、投资、生育建议，不得预言死亡、灾祸或确切婚期，不得使用“必然”“一定”等确定性表述。",
     "4. 不得输出任何数字评分、百分比或趋势指数数值。",
     "5. 必须按给定 JSON 结构输出，不添加任何额外字段，不使用 Markdown 代码块。",
@@ -53,7 +53,9 @@ export function buildUserPrompt(selection: AnalyzeSelection, question?: string):
   }
   lines.push(
     "",
-    "请输出 JSON，字段为：summary、summaryRuleIds、dimensionInterpretations（每项含 dimension、interpretation、ruleIds）、opportunities、cautions、selectedPeriod（含 explanation、ruleIds）、disclaimer。",
+    period.reasons.length
+      ? "请输出 JSON，evidenceStatus 必须为 cited；字段为：evidenceStatus、summary、summaryRuleIds、dimensionInterpretations（每项含 dimension、interpretation、ruleIds）、opportunities、cautions、selectedPeriod（含 explanation、ruleIds）、disclaimer。"
+      : "请输出 JSON，evidenceStatus 必须为 insufficient；summary 与 selectedPeriod.explanation 必须包含“当前规则无法确定”，所有 ruleIds 必须为空，且不得虚构确定性依据。字段为：evidenceStatus、summary、summaryRuleIds、dimensionInterpretations（每项含 dimension、interpretation、ruleIds）、opportunities、cautions、selectedPeriod（含 explanation、ruleIds）、disclaimer。",
   );
   return lines.join("\n");
 }

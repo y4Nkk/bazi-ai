@@ -2,7 +2,7 @@
 import { addDays, buildSegmentTable, dayPillarFor, hourPillarFor, monthYearPillarsFor, type SegmentTable } from "./calendar";
 import { BRANCH_ELEMENTS, STEM_ELEMENTS, shichenIndexOfHour, type EarthlyBranch, type Element, type HeavenlyStem } from "./constants";
 import type { BirthInput } from "./normalize";
-import { dayOf } from "./astronomy";
+import { dayOf, instantMillisOf } from "./astronomy";
 import { capReasons, ruleHit } from "./rules";
 import { ruleHitsFromRelations, temporalRelationsOf } from "./relations";
 import { verdictsOf } from "./verdict";
@@ -27,19 +27,19 @@ export function temporalElements(transit: TransitPillars): Array<{ layer: keyof 
   ]);
 }
 
-function activeLuckPillar(snapshot: Pick<ChartSnapshot, "luck">, dateTime: string): string | null {
-  const precise = dateTime.length === 16 ? `${dateTime}:00` : dateTime;
-  return snapshot.luck.cycles.find((cycle) => cycle.ganzhi && precise >= cycle.startDateTime && precise < cycle.endDateTime)?.ganzhi ?? null;
+function activeLuckPillar(snapshot: Pick<ChartSnapshot, "luck">, evalInstant: string): string | null {
+  const at = instantMillisOf(evalInstant);
+  return snapshot.luck.cycles.find((cycle) => cycle.ganzhi && at >= instantMillisOf(cycle.startInstant) && at < instantMillisOf(cycle.endInstant))?.ganzhi ?? null;
 }
 
-export function transitPillarsAt(table: SegmentTable, evalDateTime: string, luck: ChartSnapshot["luck"]): TransitPillars {
-  const { yearGZ, monthGZ } = monthYearPillarsFor(table, evalDateTime);
-  const evalDay = dayOf(evalDateTime);
+export function transitPillarsAt(table: SegmentTable, evalWallClock: string, evalInstant: string, luck: ChartSnapshot["luck"]): TransitPillars {
+  const { yearGZ, monthGZ } = monthYearPillarsFor(table, evalInstant);
+  const evalDay = dayOf(evalWallClock);
   const dayGZ = dayPillarFor(evalDay);
-  const hour = Number(evalDateTime.slice(11, 13));
+  const hour = Number(evalWallClock.slice(11, 13));
   const index = shichenIndexOfHour(hour);
   const hourDay = hour >= 23 ? dayPillarFor(addDays(evalDay, 1)) : dayGZ;
-  return { year: yearGZ, month: monthGZ, day: dayGZ, hour: hourPillarFor(hourDay, index), luck: activeLuckPillar({ luck }, evalDateTime) };
+  return { year: yearGZ, month: monthGZ, day: dayGZ, hour: hourPillarFor(hourDay, index), luck: activeLuckPillar({ luck }, evalInstant) };
 }
 
 /** Re-runs relations and favorable/adverse evidence at every temporal layer. */

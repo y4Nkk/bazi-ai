@@ -12,14 +12,31 @@ import {
   branchIndexOf,
   stemIndexOf,
 } from "./constants";
+import { instantMillisOf } from "./astronomy";
 import type { CalendarFacts } from "./contract";
 
 /** Pinned to the installed lunar-typescript facts implementation. */
-export const CALENDAR_MODEL_REVISION = "lunar-typescript-1.8.6";
+export const CALENDAR_MODEL_REVISION = "lunar-typescript-1.8.6-cst-instant-v2";
 
 const DAY_ANCHOR_DATE = "2000-01-01";
 const DAY_MS = 86_400_000;
 const MINUTE_MS = 60_000;
+const MODEL_UTC_OFFSET_MS = 8 * 60 * MINUTE_MS;
+
+/**
+ * lunar-typescript publishes its solar-term wall clocks in the fixed
+ * UTC+08 calendar model.  Never compare those values directly with a birth
+ * place wall clock: first turn the unique instant into this model clock.
+ */
+export function modelClockOfInstant(birthInstant: string): string {
+  const millis = instantMillisOf(birthInstant);
+  return formatUtcDateTime(millis + MODEL_UTC_OFFSET_MS);
+}
+
+/** The same instant expressed by the model clock as a lunar-typescript Solar. */
+export function modelSolarOfInstant(birthInstant: string): Solar {
+  return solarOf(modelClockOfInstant(birthInstant));
+}
 
 export function solarOf(localDateTime: string): Solar {
   const [datePart, timePart] = localDateTime.split("T");
@@ -28,8 +45,17 @@ export function solarOf(localDateTime: string): Solar {
   return Solar.fromYmdHms(year, month, day, hour, minute, second);
 }
 
-export function calendarFactsOf(localDateTime: string): CalendarFacts {
-  const lunar = solarOf(localDateTime).getLunar();
+/**
+ * Calendar facts at a unique instant.  Lunar-typescript solar terms are read
+ * at the corresponding fixed UTC+08 model clock rather than a place wall
+ * clock, so the adjacent jie is correct for New York, DST, and every IANA
+ * zone alike.
+ */
+export function calendarFactsOfInstant(birthInstant: string): CalendarFacts {
+  return calendarFactsFromLunar(modelSolarOfInstant(birthInstant).getLunar());
+}
+
+function calendarFactsFromLunar(lunar: ReturnType<Solar["getLunar"]>): CalendarFacts {
   const month = lunar.getMonth();
   const prev = lunar.getPrevJieQi();
   const next = lunar.getNextJieQi();
@@ -43,8 +69,67 @@ export function calendarFactsOf(localDateTime: string): CalendarFacts {
   };
 }
 
+export interface JieBoundary {
+  name: string;
+  /** lunar-typescript's fixed UTC+08 wall-clock representation. */
+  modelDateTime: string;
+  /** The same boundary as a UTC ISO instant. */
+  instant: string;
+}
+
+export interface AdjacentJieBoundaries {
+  previous: JieBoundary;
+  next: JieBoundary;
+}
+
+/** Exact adjacent 节 boundaries surrounding a unique instant. */
+export function adjacentJieBoundariesAtInstant(birthInstant: string): AdjacentJieBoundaries {
+  const lunar = modelSolarOfInstant(birthInstant).getLunar();
+  return {
+    previous: jieBoundaryOf(lunar.getPrevJie()),
+    next: jieBoundaryOf(lunar.getNextJie()),
+  };
+}
+
+function jieBoundaryOf(jie: ReturnType<ReturnType<Solar["getLunar"]>["getPrevJie"]>): JieBoundary {
+  const modelDateTime = formatSolar(jie.getSolar());
+  return {
+    name: jie.getName(),
+    modelDateTime,
+    instant: formatInstant(new Date(`${modelDateTime}+08:00`).getTime()),
+  };
+}
+
+/** Year and month pillars determined at a unique instant in the UTC+08 model. */
+export function monthYearPillarsAtInstant(birthInstant: string): { yearGZ: string; monthGZ: string } {
+  const eightChar = modelSolarOfInstant(birthInstant).getLunar().getEightChar();
+  return { yearGZ: eightChar.getYear(), monthGZ: eightChar.getMonth() };
+}
+
+/** Position within the enclosing 节 interval, in integer thousandths. */
+export function seasonalProgressPermilleAtInstant(birthInstant: string): number {
+  const at = instantMillisOf(birthInstant);
+  const { previous, next } = adjacentJieBoundariesAtInstant(birthInstant);
+  const start = Date.parse(previous.instant);
+  const end = Date.parse(next.instant);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    throw new Error("节气区间无法计算");
+  }
+  return Math.max(0, Math.min(1000, Math.floor(((at - start) * 1000) / (end - start))));
+}
+
 function formatSolar(solar: Solar): string {
   return solar.toYmdHms().replace(" ", "T");
+}
+
+function formatUtcDateTime(utcMillis: number): string {
+  const d = new Date(utcMillis);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+}
+
+function formatInstant(utcMillis: number): string {
+  return new Date(utcMillis).toISOString().slice(0, 19) + "Z";
 }
 
 /* ------------------------------------------------------------------ */
@@ -122,12 +207,11 @@ export function hourPillarFor(dayGanzhi: string, shichenIndex: number): string {
 /* ------------------------------------------------------------------ */
 
 /**
- * One month pillar segment: [start, jieEndMoment) holds a constant month and
- * year pillar. jieEndMoment is the exact local wall clock of the next 节.
+ * One month pillar segment ends at one actual 节 instant. Local dates only
+ * enumerate the locked model's term data; callers never compare wall clocks.
  */
 export interface MonthSegment {
-  start: string;
-  jieEndMoment: string;
+  jieEndInstant: string;
   yearGZ: string;
   monthGZ: string;
 }
@@ -152,11 +236,11 @@ export function buildSegmentTable(rangeStart: string, rangeEnd: string): Segment
     const nextJie = lunar.getNextJie();
     const jieSolar = nextJie.getSolar();
     const jieEndMoment = formatSolar(jieSolar);
-    // Anchor one minute before the boundary: always inside the closing segment.
-    const anchor = solarOf(shiftMinute(jieEndMoment, -1)).getLunar().getEightChar();
+    const jieEndInstant = formatInstant(new Date(`${jieEndMoment}+08:00`).getTime());
+    // Anchor one second before the boundary: always inside the closing segment.
+    const anchor = solarOf(shiftMinute(jieEndMoment, -1 / 60)).getLunar().getEightChar();
     segments.push({
-      start: cursor,
-      jieEndMoment,
+      jieEndInstant,
       yearGZ: anchor.getYear(),
       monthGZ: anchor.getMonth(),
     });
@@ -175,15 +259,16 @@ function shiftMinute(localDateTime: string, minutes: number): string {
   );
 }
 
-/** Month and year pillars in effect at an exact local wall clock. */
+/** Month and year pillars in effect at an exact instant. */
 export function monthYearPillarsFor(
   table: SegmentTable,
-  evalDateTime: string,
+  evalInstant: string,
 ): { yearGZ: string; monthGZ: string } {
+  const at = instantMillisOf(evalInstant);
   for (const segment of table.segments) {
-    if (evalDateTime < segment.jieEndMoment) {
+    if (at < Date.parse(segment.jieEndInstant)) {
       return { yearGZ: segment.yearGZ, monthGZ: segment.monthGZ };
     }
   }
-  throw new Error(`节气区间表未覆盖时刻 ${evalDateTime}`);
+  throw new Error(`节气区间表未覆盖时刻 ${evalInstant}`);
 }

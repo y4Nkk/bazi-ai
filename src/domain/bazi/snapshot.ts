@@ -1,6 +1,6 @@
 /** Single composition point for the deterministic ZP-1 engine. */
 import { createHash } from "node:crypto";
-import { calendarFactsOf } from "./calendar";
+import { calendarFactsOfInstant } from "./calendar";
 import { natalChartOf } from "./natal";
 import { luckInfoOf } from "./luck";
 import { natalRelationsOf } from "./relations";
@@ -25,15 +25,15 @@ export function calculateBaziSnapshot(args: {
   const civilDateTime = civilDateTimeOf(input.timezone, input.birthInstant);
   const correction = solarCorrection(input.timezone, input.longitude, input.birthInstant);
   const trueSolarDateTime = shiftLocalDateTime(civilDateTime, correction.totalMinutes);
-  const civilCandidate = candidateOf("civil", civilDateTime, null);
-  const trueSolarCandidate = candidateOf("trueSolar", trueSolarDateTime, correction.totalMinutes);
+  const civilCandidate = candidateOf("civil", civilDateTime, null, input.birthInstant);
+  const trueSolarCandidate = candidateOf("trueSolar", trueSolarDateTime, correction.totalMinutes, input.birthInstant);
   const selectedDateTime = input.timeStandard === "trueSolar" ? trueSolarDateTime : civilDateTime;
-  const natal = natalChartOf(selectedDateTime);
+  const natal = natalChartOf(selectedDateTime, input.birthInstant);
   const relations = natalRelationsOf(natal);
   const qi = assessQi(natal, relations);
   const judgment = resolveFavorable(natal, qi, assessStructure(natal, qi, relations), relations);
   const verdicts = verdictsOf({ input, natal, judgment, evidence: judgment.evidence });
-  const luck = luckInfoOf(selectedDateTime, input.chartGender);
+  const luck = luckInfoOf(input.birthInstant, input.timezone, input.chartGender);
   const series = buildTrendSeries({ input, natal, judgment, luck, range, dimension, resolution });
   const boundary = boundaryOf(civilDateTime, trueSolarDateTime, civilCandidate, trueSolarCandidate, correction.totalMinutes);
   return {
@@ -54,14 +54,14 @@ export function calculateBaziSnapshot(args: {
   };
 }
 
-function candidateOf(standard: TimeCandidate["standard"], localDateTime: string, correctionMinutes: number | null): TimeCandidate {
+function candidateOf(standard: TimeCandidate["standard"], localDateTime: string, correctionMinutes: number | null, birthInstant: string): TimeCandidate {
   return {
     standard,
     localDateTime,
     shichen: SHICHEN_NAMES[shichenIndexOfHour(hourOf(localDateTime))],
     correctionMinutes,
-    pillars: natalChartOf(localDateTime).pillars.map((pillar) => pillar.ganzhi),
-    calendar: calendarFactsOf(localDateTime),
+    pillars: natalChartOf(localDateTime, birthInstant).pillars.map((pillar) => pillar.ganzhi),
+    calendar: calendarFactsOfInstant(birthInstant),
   };
 }
 

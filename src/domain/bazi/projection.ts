@@ -77,11 +77,11 @@ export function buildTrendSeries(args: {
   for (const day of days) {
     const points: SeriesPoint[] = SHICHEN_START_HOURS.flatMap((hour) => {
       const timestamp = `${day}T${String(hour).padStart(2, "0")}:00`;
-      const instants = input.timeStandard === "trueSolar" ? instantCandidatesForCivil(input.timezone, timestamp) : [null];
+      const instants = instantCandidatesForCivil(input.timezone, timestamp);
       return instants.map((instant) => {
-        const correction = instant ? solarCorrection(input.timezone, input.longitude, instant).totalMinutes : 0;
+        const correction = input.timeStandard === "trueSolar" ? solarCorrection(input.timezone, input.longitude, instant).totalMinutes : 0;
         const evaluated = correction === 0 ? timestamp : shiftLocalDateTime(timestamp, correction);
-        const transit = transitPillarsAt(table, evaluated, luck);
+        const transit = transitPillarsAt(table, evaluated, instant, luck);
         const projected = projectTemporal(assessTemporal({ input, natal, judgment, transit }));
         return { timestamp, scores: projected.scores, reasons: projected.reasons, verdicts: projected.verdicts };
       });

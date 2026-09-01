@@ -5,6 +5,7 @@ import { buildSystemPrompt, buildUserPrompt } from "../src/ai/prompt";
 import type { AnalyzeSelection } from "../src/ai/schema";
 
 const VALID_OUTPUT = {
+  evidenceStatus: "cited" as const,
   summary: "这是一段长度足够的整体解读，说明命盘结构与当前周期的关系，语气平和。",
   summaryRuleIds: ["ZHI_LIUHE:午未|流年|流年|原局"],
   dimensionInterpretations: [
@@ -56,12 +57,29 @@ describe("AnalysisOutput schema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects missing or empty required fields", () => {
+  it("rejects missing required fields and requires citations for cited output", () => {
     expect(AnalysisOutputSchema.safeParse({ ...VALID_OUTPUT, summary: "" }).success).toBe(false);
     expect(
-      AnalysisOutputSchema.safeParse({ ...VALID_OUTPUT, opportunities: [] }).success,
+      AnalysisOutputSchema.safeParse({ ...VALID_OUTPUT, summaryRuleIds: [], dimensionInterpretations: [], selectedPeriod: { ...VALID_OUTPUT.selectedPeriod, ruleIds: [] } }).success,
     ).toBe(false);
     expect(AnalysisOutputSchema.safeParse({ ...VALID_OUTPUT, disclaimer: "短" }).success).toBe(false);
+  });
+
+  it("accepts an explicit no-evidence explanation without invented citations", () => {
+    const output = {
+      ...VALID_OUTPUT,
+      evidenceStatus: "insufficient" as const,
+      summary: "当前规则无法确定该周期是否存在足以支持具体判断的确定性依据，因此仅保留这一边界说明。",
+      summaryRuleIds: [],
+      dimensionInterpretations: [],
+      opportunities: [],
+      cautions: [],
+      selectedPeriod: {
+        explanation: "当前规则无法确定该周期的具体倾向，因为没有可引用的确定性规则依据。",
+        ruleIds: [],
+      },
+    };
+    expect(AnalysisOutputSchema.safeParse(output).success).toBe(true);
   });
 
   it("rejects duplicate dimension interpretations", () => {
@@ -124,6 +142,22 @@ describe("model text parsing", () => {
 
   it("rejects JSON that fails the schema", () => {
     expect(() => parseAndValidate(JSON.stringify({ hello: "world" }))).toThrow(AiInvocationError);
+  });
+
+  it("accepts evidence-insufficient output only when the selected period has no rule", () => {
+    const noEvidence = {
+      ...VALID_OUTPUT,
+      evidenceStatus: "insufficient" as const,
+      summary: "当前规则无法确定该周期的具体传统命理倾向，因此不补充未经规则支持的解释。",
+      summaryRuleIds: [],
+      dimensionInterpretations: [],
+      opportunities: [],
+      cautions: [],
+      selectedPeriod: { explanation: "当前规则无法确定该周期的具体倾向，因为引擎没有提供可引用规则。", ruleIds: [] },
+    };
+    const emptySelection = { ...VALID_SELECTION, selectedPeriod: { ...VALID_SELECTION.selectedPeriod, reasons: [] } };
+    expect(parseAndValidate(JSON.stringify(noEvidence), emptySelection)).toEqual(noEvidence);
+    expect(() => parseAndValidate(JSON.stringify(noEvidence), VALID_SELECTION)).toThrow("不得以证据不足替代引用");
   });
 });
 

@@ -37,6 +37,7 @@ afterEach(() => {
 describe("provider invocation", () => {
   it("rejects an AI citation that is absent from the deterministic selection", () => {
     const output = {
+      evidenceStatus: "cited",
       summary: "这是一段长度足够的整体解读，且只按已给定的传统规则说明当前周期。",
       summaryRuleIds: ["forged-rule"],
       dimensionInterpretations: [{ dimension: "career", interpretation: "事业层面保持审慎推进，避免把短期信号当成确定结果。", ruleIds: ["forged-rule"] }],

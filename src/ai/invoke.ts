@@ -209,6 +209,15 @@ function assertCitations(output: AnalysisOutput, selection: AnalyzeSelection): v
     ...output.dimensionInterpretations.flatMap((item) => item.ruleIds),
     ...output.selectedPeriod.ruleIds,
   ];
+  if (allowed.size === 0) {
+    if (output.evidenceStatus !== "insufficient") {
+      throw new AiInvocationError("INVALID_OUTPUT", "当前周期没有可引用的确定性规则，模型必须明确说明当前规则无法确定。");
+    }
+    return;
+  }
+  if (output.evidenceStatus !== "cited") {
+    throw new AiInvocationError("INVALID_OUTPUT", "当前周期存在确定性规则，模型不得以证据不足替代引用。");
+  }
   if (cited.some((ruleId) => !allowed.has(ruleId))) {
     throw new AiInvocationError("INVALID_OUTPUT", "模型引用了确定性快照中不存在的规则，已拒绝渲染。");
   }
