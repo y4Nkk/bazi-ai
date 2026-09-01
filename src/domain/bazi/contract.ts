@@ -45,6 +45,18 @@ export interface ShenshaFact {
   reference: string;
   /** Matching stem, branch, or pillar value on the annotated column. */
   target: string;
+  /** Frozen literature record for this lookup; it never supplies a prediction. */
+  evidence: ShenshaEvidence;
+}
+
+export interface ShenshaEvidence {
+  /** 原典直引 = lookup is explicit in the cited text; 流派变体 = the implementation selects one documented variant; 待原典核验 = not counted as literature-confirmed. */
+  grade: "原典直引" | "流派变体" | "待原典核验";
+  work: string;
+  section: string;
+  url: string | null;
+  /** Concise description of the frozen lookup basis, never a life-outcome assertion. */
+  basis: string;
 }
 
 export interface AuxiliaryPillarFact {

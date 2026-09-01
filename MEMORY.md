@@ -280,3 +280,14 @@ This file records verified, reusable project decisions. It is not a user-profile
 - Natal output now includes deterministic 胎元、胎息、命宫、身宫. Every atomic or aggregate period owns its exact endpoint transit, and `professional.ts` builds the displayed natal/moving pillar detail without recalculation in React.
 - `ProfessionalPanel` exposes 命盘总览、岁运细盘、神煞注记、规则依据 in the existing pearl workbench. Aggregate detail explicitly describes its close-instant semantics, and the shensha boundary plus lookup references remain visible rather than hover-only.
 - Follow-up verification supersedes the environmental limitation above: `npm run typecheck`; all 21 Vitest files (129 tests); a clean `npm run build`; and the complete Playwright desktop/mobile walkthrough against the production server. The walkthrough confirms shensha references and boundaries, endpoint semantics, history/keyboard/resolution flows, no horizontal scroll, 44px touch targets, and no browser console/page errors.
+
+## 2026-09-01: professional-detail Chinese presentation
+
+- `ProfessionalPanel` now translates internal pillar-position and seasonal/root/climate enum values into Chinese reading labels before rendering. Normal relationship and evidence cards show involved pillars and applicable dimensions, never raw `GAN_*`/`ZHI_*` codes or full rule IDs.
+- Verified: focused professional presentation tests, `npm run typecheck`, and the full desktop/mobile UI walkthrough, including explicit assertions that no internal identifiers or English enum values are visible in the professional evidence view.
+
+## 2026-09-01: shensha literature evidence contract
+
+- `src/domain/bazi/shensha-evidence.ts` is the single owner of every active shensha code's source grade, work, section, public link, and lookup basis. Each emitted annotation carries that immutable record; the professional shensha view discloses it, and cache validation rejects legacy snapshots without it.
+- The literature directory is `docs/shensha-evidence.md`: it lists all 30 current runtime entries plus the complete 23-section table of 《三命通会》卷三. Directly located checks newly add 德秀贵人 and 六厄; entries with only a project table or a disputed interpretation remain explicitly marked 待原典核验 or 流派变体, never as confirmed literature.
+- Verified: full Vitest suite (22 files, 133 tests), `npm run typecheck`, `npm run build`, `git diff --check`; the desktop browser walkthrough passed the new literature-grade disclosure assertion before an unrelated later segment of the long existing walkthrough stopped making progress.

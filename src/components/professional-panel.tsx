@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ChartSnapshot, RuleHit, TrendPeriod } from "@/domain/bazi/contract";
+import { DIMENSION_LABELS, type ChartSnapshot, type RuleHit, type TrendPeriod } from "@/domain/bazi/contract";
 import { professionalDetailOf, type ProfessionalPillarFact } from "@/domain/bazi/professional";
 import { TEXT } from "@/lib/typography";
 import { Button } from "./controls";
@@ -44,7 +44,7 @@ export function ProfessionalPanel({
         <div>
           <h2 className={TEXT.sectionTitle}>专业细盘</h2>
           <p className={TEXT.caption}>
-            {detail.periodLabel} · 周期末事实 {formatInstant(detail.endpointInstant)}
+            {detail.periodLabel} · 周期终点（出生地时区）{formatProfessionalEndpoint(detail.endpointInstant, snapshot.input.timezone)}
           </p>
         </div>
         <p className={TEXT.micro}>所有内容来自当前算法快照</p>
@@ -85,7 +85,6 @@ export function ProfessionalPanel({
             <RelationList title="原局关系" relations={detail.natalRelations.map((edge) => ({
               id: edge.id,
               label: edge.label,
-              code: edge.code,
               subjects: edge.subjects,
               suffix: relationStateLabel(edge.state),
             }))} />
@@ -100,7 +99,6 @@ export function ProfessionalPanel({
               relations={detail.periodRelations.map((hit) => ({
                 id: hit.id,
                 label: hit.label,
-                code: hit.code,
                 subjects: hit.subjects,
                 suffix: hit.temporalLayer,
               }))}
@@ -191,6 +189,12 @@ function ShenshaRows({ title, pillars }: { title: string; pillars: ProfessionalP
                 >
                   <span className={`${TEXT.caption} block text-bazi-ink-secondary`}>{fact.label}</span>
                   <span className={`${TEXT.micro} block`}>{fact.reference} → {fact.target}</span>
+                  <span className={TEXT.micro}>证据：{fact.evidence.grade}</span>
+                  {fact.evidence.url ? (
+                    <a className={`${TEXT.micro} block underline`} href={fact.evidence.url} target="_blank" rel="noreferrer">
+                      {fact.evidence.work}·{fact.evidence.section}
+                    </a>
+                  ) : <span className={`${TEXT.micro} block`}>出处：待补原典定位</span>}
                 </span>
               )) : <span className={TEXT.caption}>无</span>}
             </div>
@@ -206,7 +210,7 @@ function RelationList({
   relations,
 }: {
   title: string;
-  relations: Array<{ id: string; label: string; code: string; subjects: string[]; suffix: string }>;
+  relations: Array<{ id: string; label: string; subjects: string[]; suffix: string }>;
 }) {
   return (
     <section className="flex flex-col gap-2 border-t border-bazi-border-soft pt-4">
@@ -219,8 +223,7 @@ function RelationList({
                 <span className={TEXT.label}>{relation.label}</span>
                 <span className={TEXT.micro}>{relation.suffix}</span>
               </div>
-              <p className={TEXT.caption}>{relation.subjects.join(" · ")}</p>
-              <p className={`${TEXT.micro} font-mono`}>{relation.code}</p>
+              <p className={TEXT.caption}>涉及：{formatProfessionalSubjects(relation.subjects)}</p>
             </li>
           ))}
         </ul>
@@ -241,8 +244,8 @@ function EvidenceList({ evidence }: { evidence: RuleHit[] }) {
               <span className={TEXT.label}>{hit.label}</span>
               <span className={`${TEXT.micro} ${polarityClass(hit.polarity)}`}>{polarityLabel(hit.polarity)} · {hit.temporalLayer}</span>
             </div>
-            <p className={TEXT.caption}>{hit.subjects.join(" · ")}</p>
-            <p className={`${TEXT.micro} break-all font-mono`}>{hit.id}</p>
+            <p className={TEXT.caption}>涉及：{formatProfessionalSubjects(hit.subjects)}</p>
+            <p className={TEXT.micro}>作用范围：{hit.domainRelevance.map((domain) => DIMENSION_LABELS[domain]).join("、") || "综合"}</p>
           </li>
         ))}
       </ul>
@@ -268,12 +271,46 @@ function FactRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function formatInstant(value: string): string {
-  return value.replace("T", " ").replace(/\.000Z$/, "Z");
+const SUBJECT_LABELS: Record<string, string> = {
+  year: "年柱",
+  month: "月柱",
+  day: "日柱",
+  hour: "时柱",
+  luck: "大运",
+  transitYear: "流年",
+  transitMonth: "流月",
+  transitDay: "流日",
+  transitHour: "流时",
+  early: "节初",
+  middle: "节中",
+  late: "节后",
+  main: "本气",
+  residual: "余气",
+  prosperous: "旺根",
+  cold: "偏寒",
+  balanced: "中和",
+  warm: "偏暖",
+  dry: "偏燥",
+  wet: "偏湿",
+};
+
+export function formatProfessionalSubjects(subjects: string[]): string {
+  return subjects
+    .map((subject) => subject.replace(/\b(year|month|day|hour|luck|transitYear|transitMonth|transitDay|transitHour|early|middle|late|main|residual|prosperous|cold|balanced|warm|dry|wet)\b/g, (token) => SUBJECT_LABELS[token]))
+    .join(" · ");
+}
+
+export function formatProfessionalEndpoint(value: string, timeZone: string): string {
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone,
+    dateStyle: "long",
+    timeStyle: "medium",
+    hourCycle: "h23",
+  }).format(new Date(value));
 }
 
 function relationStateLabel(state: ChartSnapshot["relations"][number]["state"]): string {
-  return { formed: "成", blocked: "受阻", contested: "争合", untransformed: "未化", broken: "被破" }[state];
+  return { formed: "已成", blocked: "受阻", contested: "争合", untransformed: "未化", broken: "被破" }[state];
 }
 
 function structureStatus(status: ChartSnapshot["judgment"]["structureStatus"]): string {

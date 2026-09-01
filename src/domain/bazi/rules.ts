@@ -16,6 +16,7 @@ import {
 } from "./constants";
 import { ganzhiIndexOf } from "./calendar";
 import { DIMENSION_KEYS, type NatalChart, type RuleHit, type TemporalLayer, type TransitPillars } from "./contract";
+import { SHENSHA_EVIDENCE } from "./shensha-evidence";
 
 export const HIDDEN_STEM_WEIGHTS: Record<EarthlyBranch, Array<[HeavenlyStem, number]>> = {
   子: [["癸", 10]],
@@ -73,8 +74,9 @@ export const YANG_REN_BRANCH: Record<HeavenlyStem, EarthlyBranch> = {
 /**
  * Closed annotation-only shensha directory. These lookups are presentation
  * facts only: no entry can enter Qi, structure, favorable, verdict, or trend
- * projection. The catalog follows the lookup families collected in
- * 《三命通会》卷三; variant-only entries are intentionally excluded.
+ * projection. Every emitted entry is linked to shensha-evidence.ts, which
+ * identifies a direct source, a documented variant, or an explicit evidence
+ * gap instead of attributing the whole catalog to one book.
  */
 export const SHENSHA = Object.freeze({
   dayStem: {
@@ -95,6 +97,7 @@ export const SHENSHA = Object.freeze({
     tianDeHe: { label: "天德合", targets: { 寅: "壬", 卯: "巳", 辰: "丁", 巳: "丙", 午: "寅", 未: "己", 申: "戊", 酉: "亥", 戌: "辛", 亥: "庚", 子: "申", 丑: "乙" } as Record<EarthlyBranch, string> },
     yueDe: { label: "月德贵人", targets: { 寅: "丙", 午: "丙", 戌: "丙", 申: "壬", 子: "壬", 辰: "壬", 亥: "甲", 卯: "甲", 未: "甲", 巳: "庚", 酉: "庚", 丑: "庚" } as Record<EarthlyBranch, string> },
     yueDeHe: { label: "月德合", targets: { 寅: "辛", 午: "辛", 戌: "辛", 申: "丁", 子: "丁", 辰: "丁", 亥: "己", 卯: "己", 未: "己", 巳: "乙", 酉: "乙", 丑: "乙" } as Record<EarthlyBranch, string> },
+    deXiu: { label: "德秀贵人", targets: { 寅: "丙丁戊癸", 午: "丙丁戊癸", 戌: "丙丁戊癸", 申: "壬癸戊己丙辛甲", 子: "壬癸戊己丙辛甲", 辰: "壬癸戊己丙辛甲", 巳: "庚辛乙", 酉: "庚辛乙", 丑: "庚辛乙", 亥: "甲乙丁壬", 卯: "甲乙丁壬", 未: "甲乙丁壬" } as Record<EarthlyBranch, string> },
     tianYi: { label: "天医", targets: { 寅: "丑", 卯: "寅", 辰: "卯", 巳: "辰", 午: "巳", 未: "午", 申: "未", 酉: "申", 戌: "酉", 亥: "戌", 子: "亥", 丑: "子" } as Record<EarthlyBranch, string> },
   },
   dayBranchGroups: {
@@ -105,6 +108,7 @@ export const SHENSHA = Object.freeze({
     jieSha: { label: "劫煞", groups: [["寅午戌", "亥"], ["申子辰", "巳"], ["巳酉丑", "寅"], ["亥卯未", "申"]] },
     zaiSha: { label: "灾煞", groups: [["寅午戌", "子"], ["申子辰", "午"], ["巳酉丑", "卯"], ["亥卯未", "酉"]] },
     wangShen: { label: "亡神", groups: [["寅午戌", "巳"], ["申子辰", "亥"], ["巳酉丑", "申"], ["亥卯未", "寅"]] },
+    liuE: { label: "六厄", groups: [["寅午戌", "酉"], ["申子辰", "卯"], ["巳酉丑", "子"], ["亥卯未", "午"]] },
   } as Record<string, { label: string; groups: string[][] }>,
   yearBranch: {
     guChen: { label: "孤辰", targets: { 亥: "寅", 子: "寅", 丑: "寅", 寅: "巳", 卯: "巳", 辰: "巳", 巳: "申", 午: "申", 未: "申", 申: "亥", 酉: "亥", 戌: "亥" } as Record<EarthlyBranch, string> },
@@ -215,6 +219,7 @@ export const RULE_CATALOG_MANIFEST = Object.freeze({
   stemRelations: { GAN_WUHE: [...GAN_WUHE], GAN_CHONG: [...GAN_CHONG] },
   yangRen: YANG_REN_BRANCH,
   shensha: SHENSHA,
+  shenshaEvidence: SHENSHA_EVIDENCE,
   ruleLabels: RULE_LABELS,
   nayin: NAYIN_BY_PAIR,
   lifeStages: { start: LIFE_STAGE_START, stages: LIFE_STAGES },

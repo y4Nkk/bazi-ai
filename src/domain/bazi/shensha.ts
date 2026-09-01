@@ -5,6 +5,7 @@
 import type { EarthlyBranch, HeavenlyStem } from "./constants";
 import type { ShenshaFact } from "./contract";
 import { SHENSHA } from "./rules";
+import { SHENSHA_CODES, shenshaEvidenceOf } from "./shensha-evidence";
 
 export interface ShenshaContext {
   dayStem: HeavenlyStem;
@@ -14,36 +15,7 @@ export interface ShenshaContext {
   voidBranches: EarthlyBranch[];
 }
 
-const CODES = {
-  tianYi: "SHENSHA_TIAN_YI",
-  taiJi: "SHENSHA_TAI_JI",
-  wenChang: "SHENSHA_WEN_CHANG",
-  fuXing: "SHENSHA_FU_XING",
-  guoYin: "SHENSHA_GUO_YIN",
-  tianChu: "SHENSHA_TIAN_CHU",
-  lu: "SHENSHA_LU",
-  yangRen: "SHENSHA_YANG_REN",
-  feiRen: "SHENSHA_FEI_REN",
-  hongYan: "SHENSHA_HONG_YAN",
-  jinYu: "SHENSHA_JIN_YU",
-  tianDe: "SHENSHA_TIAN_DE",
-  tianDeHe: "SHENSHA_TIAN_DE_HE",
-  yueDe: "SHENSHA_YUE_DE",
-  yueDeHe: "SHENSHA_YUE_DE_HE",
-  tianYiMedical: "SHENSHA_TIAN_YI_MEDICAL",
-  yiMa: "SHENSHA_YI_MA",
-  taoHua: "SHENSHA_TAO_HUA",
-  huaGai: "SHENSHA_HUA_GAI",
-  jiangXing: "SHENSHA_JIANG_XING",
-  jieSha: "SHENSHA_JIE_SHA",
-  zaiSha: "SHENSHA_ZAI_SHA",
-  wangShen: "SHENSHA_WANG_SHEN",
-  guChen: "SHENSHA_GU_CHEN",
-  guaSu: "SHENSHA_GUA_SU",
-  hongLuan: "SHENSHA_HONG_LUAN",
-  tianXi: "SHENSHA_TIAN_XI",
-  kongWang: "SHENSHA_KONG_WANG",
-} as const;
+const CODES = SHENSHA_CODES;
 
 function targetIn(ganzhi: string, targets: string): string | null {
   return [...ganzhi].find((char) => targets.includes(char)) ?? null;
@@ -57,7 +29,7 @@ function add(
   target: string | null,
 ): void {
   if (!target || facts.some((fact) => fact.code === code && fact.target === target)) return;
-  facts.push({ code, label, reference, target });
+  facts.push({ code, label, reference, target, evidence: shenshaEvidenceOf(code) });
 }
 
 /** Matches one natal or moving pillar against the fixed natal references. */

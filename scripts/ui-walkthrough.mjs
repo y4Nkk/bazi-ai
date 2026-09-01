@@ -261,10 +261,25 @@ check(
   Boolean(shenshaText?.includes("不参与日主旺衰、格局、喜忌、领域结论或趋势指数")),
   "desktop: shensha annotation boundary is visible",
 );
-await page.getByRole("tab", { name: "岁运细盘", exact: true }).click();
 check(
-  (await page.locator('section[aria-label="专业细盘"]').textContent())?.includes("收盘时刻对应的大运、流年、流月、流日与流时") === true,
+  Boolean(shenshaText?.includes("证据：原典直引")) || Boolean(shenshaText?.includes("证据：流派变体")) || Boolean(shenshaText?.includes("出处：待补原典定位")),
+  "desktop: shensha facts disclose their literature evidence grade",
+);
+await page.getByRole("tab", { name: "岁运细盘", exact: true }).click();
+const temporalDetailText = await page.locator('section[aria-label="专业细盘"]').textContent();
+check(
+  temporalDetailText?.includes("收盘时刻对应的大运、流年、流月、流日与流时") === true,
   "desktop: aggregate period detail states its endpoint semantics",
+);
+check(
+  !/\b(year|month|day|hour)\b/.test(temporalDetailText ?? ""),
+  "desktop: professional relation subjects use Chinese pillar labels",
+);
+await page.getByRole("tab", { name: "规则依据", exact: true }).click();
+const evidenceDetailText = await page.locator('section[aria-label="专业细盘"]').textContent();
+check(
+  !/\b(GAN_|ZHI_|QI_MONTH_COMMAND|early|middle|late|main|residual|prosperous|cold|balanced|warm|dry|wet)\w*/.test(evidenceDetailText ?? ""),
+  "desktop: professional evidence hides internal identifiers and enum values",
 );
 await page.screenshot({ path: join(OUT_DIR, "desktop-professional-detail.png"), fullPage: true });
 

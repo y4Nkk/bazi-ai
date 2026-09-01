@@ -185,7 +185,13 @@ function usableSnapshot(value: unknown, input: BirthInput): ChartSnapshot | null
     typeof snapshot.snapshotKey !== "string" ||
     !Array.isArray(snapshot.natal?.pillars) ||
     snapshot.natal.pillars.length !== 4 ||
-    snapshot.natal.pillars.some((pillar) => !Array.isArray(pillar.shensha)) ||
+    snapshot.natal.pillars.some((pillar) => !Array.isArray(pillar.shensha) || pillar.shensha.some((fact) =>
+      typeof fact.code !== "string" ||
+      typeof fact.label !== "string" ||
+      typeof fact.reference !== "string" ||
+      typeof fact.target !== "string" ||
+      !usableShenshaEvidence(fact.evidence),
+    )) ||
     !Array.isArray(snapshot.natal.auxiliaryPillars) ||
     snapshot.natal.auxiliaryPillars.length !== 4 ||
     !Array.isArray(snapshot.luck?.cycles) ||
@@ -196,6 +202,16 @@ function usableSnapshot(value: unknown, input: BirthInput): ChartSnapshot | null
     return null;
   }
   return snapshot;
+}
+
+function usableShenshaEvidence(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false;
+  const evidence = value as { grade?: unknown; work?: unknown; section?: unknown; url?: unknown; basis?: unknown };
+  return ["原典直引", "流派变体", "待原典核验"].includes(String(evidence.grade)) &&
+    typeof evidence.work === "string" &&
+    typeof evidence.section === "string" &&
+    (evidence.url === null || typeof evidence.url === "string") &&
+    typeof evidence.basis === "string";
 }
 
 function usableTransit(value: unknown): boolean {

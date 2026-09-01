@@ -74,6 +74,14 @@ describe("workbench history contract", () => {
     expect(parseWorkbenchHistory({ records: [missingLatitude] })).toBeNull();
   });
 
+  it("rejects legacy annotations that lack the literature-evidence contract", () => {
+    const record = historyRecord() as unknown as { snapshot: { natal: { pillars: Array<{ shensha: Array<Record<string, unknown>> }> } } };
+    const annotation = record.snapshot.natal.pillars.flatMap((pillar) => pillar.shensha)[0];
+    if (!annotation) throw new Error("fixture did not produce a shensha annotation");
+    delete annotation.evidence;
+    expect(parseWorkbenchHistory({ records: [record] })).toBeNull();
+  });
+
   it("preserves a validated AI reading for history replay", () => {
     const record = historyRecord();
     record.analysisOutput = aiOutput;
