@@ -45,7 +45,7 @@ $$
 
 $$
 \begin{aligned}
-\Delta_{\lambda} &= 4\bigl(\lambda - 15o\bigr) \\[-2pt]
+\Delta_{\lambda} &= 4\bigl(\lambda - 15o\bigr) \\
 \Delta_{\mathrm{solar}} &= \Delta_{\lambda} + E(t) \\
 t_{\mathrm{solar}} &= t_{\mathrm{civil}} + \Delta_{\mathrm{solar}}
 \end{aligned}
@@ -71,7 +71,7 @@ $$
 \mathcal{N} &= \mathrm{NatalChart}\bigl(t_s, t\bigr) \\
 \mathcal{R} &= \mathrm{AdjudicateRelations}(\mathcal{N}) \\
 \mathcal{Q} &= \mathrm{AssessQi}(\mathcal{N},\mathcal{R}) \\
-\mathcal{J} &= \mathrm{ResolveFavorable}\!\left(
+\mathcal{J} &= \mathrm{ResolveFavorable}\left(
   \mathcal{N},\mathcal{Q},\mathrm{AssessStructure}(\mathcal{N},\mathcal{Q},\mathcal{R}),\mathcal{R}
 \right) \\
 \mathcal{L} &= \mathrm{LuckCycles}(t,z,g)
@@ -85,8 +85,8 @@ $\mathcal{N}$ 包含四柱及其衍生事实，$\mathcal{R}$ 是关系裁决，$
 `algorithmVersion` 由冻结规则目录的指纹以及天文、历法模型修订共同构成。快照键截取 SHA-256 的前 16 个十六进制字符：
 
 $$
-k = \mathrm{prefix}_{16}\!\left(
-\mathrm{SHA256}\!\left(
+k = \mathrm{prefix}_{16}\left(
+\mathrm{SHA256}\left(
 \mathrm{serialize}(X^{\ast},R,d,q,\mathrm{algorithmVersion})
 \right)\right)
 $$
@@ -110,7 +110,7 @@ $$
 $$
 \begin{aligned}
 B &= \frac{\sum_{\ell\in A}w_{\ell}b_{\ell}}{\sum_{\ell\in A}w_{\ell}} \\
-I &= \mathrm{clamp}_{[0,100]}\!\left(\mathrm{round}(50+30B)\right)
+I &= \mathrm{clamp}_{[0,100]}\left(\mathrm{round}(50+30B)\right)
 \end{aligned}
 $$
 
