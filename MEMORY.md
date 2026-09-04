@@ -1,10 +1,9 @@
 # Project memory
 
-This file records verified, reusable project decisions. It is not a user-profile store, an AI conversation log, or a place for API keys, birth data, tokens, prompts, or generated personal reports.
+This file records verified, reusable project decisions. It is not a user-profile store, an AI conversation log, or a place for credentials, private project configuration, machine-specific information, birth data, prompts, or generated personal reports.
 
 ## 2026-08-31: initial boundary
 
-- Repository: y4Nkk/bazi-ai, private GitHub repository.
 - Product: Chinese web application for deterministic BaZi trend analysis with optional BYOK AI interpretation.
 - Deployment: one Next.js application on Vercel; no database, account system, queue, cron job, or separate backend in V1.
 - Input owner: BirthInput includes Gregorian date and time, traditional chart gender, birthplace, timezone, longitude, latitude, and an explicit civil or true-solar time standard. Four manually typed pillars are not a V1 input path.
@@ -21,8 +20,6 @@ This file records verified, reusable project decisions. It is not a user-profile
 
 ## Verification status
 
-- Git repository initialized locally on main and linked to https://github.com/y4Nkk/bazi-ai.git.
-- GitHub repository is private and has the configured description.
 - The getdesign Apple reference was installed and preserved at docs/reference/getdesign-apple.md.
 - The UI standard was statically verified: Tailwind config loads in Node, every mapped Bazi token is defined, and no obsolete `--sw-*` or `text-sw-*` identifier remains.
 
@@ -34,13 +31,7 @@ This file records verified, reusable project decisions. It is not a user-profile
 - Series contract: normally twelve shichen atomic points per civil day (start hours 23, 1, 3, …, 21); an IANA DST overlap retains thirteen real points. Their exact offset-bearing instant is the stable identity, so overlaps remain distinct. Daily candles aggregate all real points (open = first, close = last, high/low = extremes); monthly aggregate daily candles; yearly aggregate monthly; OHLC invariants hold only at aggregate grains. Range limits: shichen ≤ 7 days, day ≤ 62 days, month ≤ 24 months, year ≤ 12 years.
 - API: `POST /api/chart` (BirthInput + range + dimension + resolution → ChartSnapshot, never calls an LLM) and `POST /api/analyze` (compact selection + provider preset + model id + one-transient key → schema-validated AnalysisOutput). Analyze rejects unknown keys (including injected `baseUrl`), rejects non-acknowledged boundary changes, and provider error bodies are never forwarded because they can echo masked key fragments (verified against a live OpenAI 401).
 - UI: pearl workbench with translucent header, birth form with real segmented controls and the boundary acknowledgement gate, interactive SVG candlestick chart (keyboard focus + arrow navigation, tinted selected band, success/danger legend), pillar/five-element/lunar-facts panels with both time-standard candidates, luck-cycle strip, and the BYOK AI panel with AI-gradient framing and fixed cultural-entertainment disclaimer. Tailwind screens were re-mapped to the DESIGN.md ladder (420/641/834/1068/1440); `min-h-touch` (44px) was added as a token-mapped utility; ambient keyframes live in `tokens.css`.
-- Verification run this session: 45 vitest tests across 7 files (Li Chun and leap-month fixtures, fast-pillar vs library equivalence, true-solar boundary crossing in both directions, luck-direction fixtures, OHLC and cross-resolution agreement, determinism, BirthInput/API validation, AI schema rejection, key-echo regression), `tsc --noEmit`, `next build`, HTTP end-to-end against the production server (valid chart snapshot, invalid date / manual-pillar / oversized-range rejections, analyze validation and provider-error mapping), and a Playwright UI walkthrough (`npm run verify:ui`, scripts/ui-walkthrough.mjs using the system Chrome channel) at 1280×800 desktop and 390×844 mobile: fill form → generate → day/month/year switching (31/24/12 candles), dimension preserved across switches, candle selection updates the detail panel, no horizontal scroll at either width, all interactive controls ≥ 44px, API key input masked. Screenshot-based visual QA of both viewports found no layout breakage.
-- Not verified in-session: deployment to Vercel (requires user account authorization; `vercel deploy` needs no extra configuration).
-
-## 2026-08-31: Vercel deployment
-
-- Deployed via Vercel dashboard import of y4Nkk/bazi-ai (main branch, Next.js preset, zero environment variables per the BYOK contract). Production domain: https://bazi-ai-yy1s-projects.vercel.app (the short `bazi-ai.vercel.app` is taken, so Vercel assigned the team-suffixed domain). Automatic deployments on every push to main.
-- Deployment Protection (Vercel Authentication) was ON by default after import; the owner chose whether to disable it for public access (Settings → Deployment Protection). Until disabled, visitors are redirected to Vercel SSO.
+- Verification run this session: 45 vitest tests across 7 files (Li Chun and leap-month fixtures, fast-pillar vs library equivalence, true-solar boundary crossing in both directions, luck-direction fixtures, OHLC and cross-resolution agreement, determinism, BirthInput/API validation, AI schema rejection, key-echo regression), `tsc --noEmit`, `next build`, endpoint validation, and desktop/mobile UI walkthroughs. The walkthrough covered form submission, resolution switching, selection, keyboard navigation, touch-target size, responsive layout, and masked key input.
 
 ## 2026-08-31: birthplace place picker
 
@@ -80,8 +71,7 @@ This file records verified, reusable project decisions. It is not a user-profile
 - Validation on restore reuses the existing owners: `BirthInputSchema` and `AnalysisOutputSchema` (zod safeParse) plus a structural guard pinning `ALGORITHM_VERSION` (an older snapshot is discarded, not rendered). snapshotKey cannot be recomputed client-side (node:crypto sha256 in `snapshot.ts`), so the guard checks shape instead: 4 natal pillars, luck cycles, non-empty native periods, their transit endpoint, and aligned domain indicators. Controls are rebuilt from the snapshot itself (dimension/resolution from `series`, anchor from `series.range.start`) — controls are never cached, so no cross-field coherence check is needed.
 - Never cached: the API key (memory-only per the BYOK contract) and `boundaryAcknowledged` — a restored boundary chart reopens the form for acknowledgement and blocks AI requests until re-acked, mirroring the fresh-generation gate. A failed re-analysis erases the cached output exactly as it disappears from the screen.
 - Real bug caught by the new walkthrough check: the restore effect first set `formOpen = snapshot.boundary === null` (inverted); a clean chart restored with the form open instead of the summary bar.
-- Walkthrough: reload now asserts the cached chart returns without re-submitting (12 year candles, 财运 preserved) and that a corrupted cache falls back to the fresh form. Script default BASE_URL was moved to `http://localhost:3000` at the time (suspected 127.0.0.1 chunk 404s); superseded on 2026-09-01 — the default is now `http://127.0.0.1:3000` with the dev server bound to 127.0.0.1.
-- Operational: an orphaned node.exe from an earlier session still owned port 3000 (netstat transiently showed it free); it shared `.next` with the fresh dev server and caused intermittent chunk 404s/hydration failure. Kill the stale listener PID before `verify:ui`, per the earlier note.
+- Walkthrough: reload now asserts the cached chart returns without re-submitting (12 year candles, 财运 preserved) and that a corrupted cache falls back to the fresh form.
 
 ## 2026-08-31: checkbox/select state motion
 
@@ -115,7 +105,7 @@ This file records verified, reusable project decisions. It is not a user-profile
 
 - `src/ai/providers.ts` owns `DEFAULT_PROVIDER_ID` and all four provider API-key console URLs. The default is DeepSeek; `AnalysisPanel` derives both its first selected provider/model and its visible key link from that owner, so changing the provider also changes the link without a parallel URL map in the component.
 - The walkthrough now asserts the DeepSeek default and the official OpenAI, Anthropic, Google, and DeepSeek links. `tests/providers.test.ts` covers the same fixed-provider contract without a browser.
-- Verified: `npm run typecheck`, 61 Vitest tests, `node --check scripts/ui-walkthrough.mjs`, and target-path diff checks. Browser walkthrough was attempted but stopped before the AI panel because the pre-existing localhost:3000 Next process returned 404 for `main-app.js` and `app-pages-internals.js`, preventing hydration; no user process was changed.
+- Verified: `npm run typecheck`, 61 Vitest tests, `node --check scripts/ui-walkthrough.mjs`, and target-path diff checks. Browser walkthrough could not be completed because a pre-existing development-server asset failure prevented hydration; no user process was changed.
 
 ## 2026-08-31: ZP-1 deterministic judgment engine
 
@@ -244,12 +234,6 @@ This file records verified, reusable project decisions. It is not a user-profile
 - Follow-up verification: all 16 non-K-line suites pass (103 tests). The K-line suite's stable fixture, daily aggregation, monthly aggregation, deterministic repeatability, time-standard identity, and display-metadata exclusion each pass when run independently; only the combined multi-resolution OHLC case exceeds the desktop observer's 30-second single-command window.
 - The three OHLC resolutions are now independent named fixtures so the same coverage can complete inside the observer limit: day, month, and year each pass separately (the two-year year aggregation took 21 seconds; the two-year month aggregation took 23 seconds). The suite now has 9 K-line tests; together with the 16 other suites, the verified total is 112 tests.
 
-## 2026-09-01: dev host is 127.0.0.1, localhost removed
-
-- User decision: the dev environment must not use `localhost`. `package.json` dev script is now `next dev -H 127.0.0.1`, and the walkthrough/probe script BASE_URL defaults are `http://127.0.0.1:3000`.
-- The 2026-08-31 note below (localhost chosen because 127.0.0.1 chunk-404s) is superseded: with the server explicitly bound to 127.0.0.1, homepage plus all 5 dev chunks return 200 over `http://127.0.0.1:3000` (verified 2026-09-01 on a fresh server). The earlier 404s were most plausibly the stale port-3000 listener sharing `.next`, not the hostname itself.
-- Supersedes the BASE_URL sentence in the 2026-08-31 workbench-cache entry.
-
 ## 2026-09-01: ZP-1 layer-normalized trend projection
 
 - Trend projection now normalizes support and pressure within each of 原局、大运、流年、流月、流日、流时 before applying that layer's fixed weight. More active relation records in one layer can no longer mechanically force an index to 5 or 95; all actual evidence remains available to the chart, while AI selection retains at most 24 compact rule records.
@@ -279,7 +263,7 @@ This file records verified, reusable project decisions. It is not a user-profile
 - `src/domain/bazi/rules.ts` is the one owner of the expanded closed shensha lookup catalog; `shensha.ts` emits stable annotation facts with the natal reference and matched target. These annotations are excluded from Qi, structure, favorable elements, verdicts, and trend projection by contract and regression tests.
 - Natal output now includes deterministic 胎元、胎息、命宫、身宫. Every atomic or aggregate period owns its exact endpoint transit, and `professional.ts` builds the displayed natal/moving pillar detail without recalculation in React.
 - `ProfessionalPanel` exposes 命盘总览、岁运细盘、神煞注记、规则依据 in the existing pearl workbench. Aggregate detail explicitly describes its close-instant semantics, and the shensha boundary plus lookup references remain visible rather than hover-only.
-- Follow-up verification supersedes the environmental limitation above: `npm run typecheck`; all 21 Vitest files (129 tests); a clean `npm run build`; and the complete Playwright desktop/mobile walkthrough against the production server. The walkthrough confirms shensha references and boundaries, endpoint semantics, history/keyboard/resolution flows, no horizontal scroll, 44px touch targets, and no browser console/page errors.
+- Follow-up verification: `npm run typecheck`; all 21 Vitest files (129 tests); a clean `npm run build`; and the complete Playwright desktop/mobile walkthrough. The walkthrough confirms shensha references and boundaries, endpoint semantics, history/keyboard/resolution flows, no horizontal scroll, 44px touch targets, and no browser console/page errors.
 
 ## 2026-09-01: professional-detail Chinese presentation
 
