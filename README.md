@@ -27,7 +27,7 @@
 
 ## 核心算法
 
-记出生输入为 $X$，其中包含精确出生瞬间、传统命理性别、IANA 时区、经度与用户选择的时标；记 $R$ 为时间范围、$d$ 为领域、$q$ 为粒度。引擎的单一路径是：
+记出生输入为 $X$，其中包含精确出生瞬间、传统命理性别、IANA 时区、经度与用户选择的时标；记 $R$ 为时间范围、 $d$ 为领域、 $q$ 为粒度。引擎的单一路径是：
 
 $$
 \begin{aligned}
@@ -39,11 +39,11 @@ X &\xrightarrow{\text{时刻规范化}} (t_{\mathrm{civil}}, t_{\mathrm{solar}})
 \end{aligned}
 $$
 
-其中 $\mathcal{C}$ 是历法、命盘与流转事实，$\mathcal{E}$ 是带来源的规则证据，$\mathcal{S}$ 是时辰点或由真实低粒度点聚合的 K 线。最后一步只读取 $\mathcal{C}$、$\mathcal{E}$ 与 $\mathcal{S}$，不会回写它们。
+其中 $\mathcal{C}$ 是历法、命盘与流转事实， $\mathcal{E}$ 是带来源的规则证据， $\mathcal{S}$ 是时辰点或由真实低粒度点聚合的 K 线。最后一步只读取 $\mathcal{C}$、 $\mathcal{E}$ 与 $\mathcal{S}$，不会回写它们。
 
 ### 1. 时刻、历法与真太阳时
 
-- `birthInstant` 必须是带显式 UTC 偏移、精确到秒的 ISO-8601 时刻。若 $o_{\mathrm{declared}}$ 是输入声明的偏移，$o_{\mathrm{IANA}}(z,t)$ 是该时区在同一瞬间的历史偏移，则输入有效的必要条件是：
+- `birthInstant` 必须是带显式 UTC 偏移、精确到秒的 ISO-8601 时刻。若 $o_{\mathrm{declared}}$ 是输入声明的偏移， $o_{\mathrm{IANA}}(z,t)$ 是该时区在同一瞬间的历史偏移，则输入有效的必要条件是：
 
 $$
 o_{\mathrm{declared}} = o_{\mathrm{IANA}}(z,t)
@@ -88,7 +88,7 @@ $$
 \end{aligned}
 $$
 
-$\mathcal{N}$ 包含四柱及其衍生事实，$\mathcal{R}$ 是关系裁决，$\mathcal{Q}$ 是旺衰证据，$\mathcal{J}$ 是格局与喜忌裁决，$\mathcal{L}$ 是大运。引擎再把这些事实和所选 $R,d,q$ 生成领域结论与时间序列。
+$\mathcal{N}$ 包含四柱及其衍生事实， $\mathcal{R}$ 是关系裁决， $\mathcal{Q}$ 是旺衰证据， $\mathcal{J}$ 是格局与喜忌裁决， $\mathcal{L}$ 是大运。引擎再把这些事实和所选 $R,d,q$ 生成领域结论与时间序列。
 
 规则目录位于 [`src/domain/bazi`](./src/domain/bazi)：每个结论携带稳定的规则标识、来源层、涉及对象、极性、数值方向、严重度与相关领域。显式合局会被标为 `formed`、`blocked`、`contested`、`untransformed` 或 `broken`；半合与拱合不会被伪装成已化的三合。
 
@@ -105,7 +105,7 @@ $X^{\ast}$ 仅保留计算输入；姓名、地点名和纬度仅作展示元数
 
 ### 3. 趋势指数与 K 线
 
-趋势指数不是价格、概率或现实结果预测。设 $\ell$ 为一个活跃来源层，$h$ 为该层的一条规则命中，$v_h\in\{-1,0,1\}$ 为规则方向，$a_h$ 为严重度，则该层的支持与压力为：
+趋势指数不是价格、概率或现实结果预测。设 $\ell$ 为一个活跃来源层， $h$ 为该层的一条规则命中， $v_h\in\{-1,0,1\}$ 为规则方向， $a_h$ 为严重度，则该层的支持与压力为：
 
 $$
 \begin{aligned}
