@@ -17,34 +17,137 @@
 
 ## 核心算法
 
-```text
-规范出生输入 → 民用时 / 真太阳时选择 → 历法与节气事实 → 命盘与大运
-        → 冻结规则目录与关系裁决 → 分层证据 → 趋势指数与时间序列 → 可选 AI 解读
-```
+记出生输入为 \(X\)，其中包含精确出生瞬间、传统命理性别、IANA 时区、经度与用户选择的时标；记 \(R\) 为时间范围、\(d\) 为领域、\(q\) 为粒度。引擎的单一路径是：
+
+$$
+\begin{aligned}
+X &\xrightarrow{\text{时刻规范化}} (t_{\mathrm{civil}}, t_{\mathrm{solar}}) \\
+&\xrightarrow{\text{历法与节气}} \mathcal{C}
+\xrightarrow{\text{命盘、大运与规则裁决}} \mathcal{E} \\
+&\xrightarrow{\text{分层投影}} \mathcal{S}_{R,d,q}
+\xrightarrow{\text{可选 BYOK}} \text{已校验的文字解读}
+\end{aligned}
+$$
+
+其中 \(\mathcal{C}\) 是历法、命盘与流转事实，\(\mathcal{E}\) 是带来源的规则证据，\(\mathcal{S}\) 是时辰点或由真实低粒度点聚合的 K 线。最后一步只读取 \(\mathcal{C}\)、\(\mathcal{E}\) 与 \(\mathcal{S}\)，不会回写它们。
 
 ### 1. 时刻、历法与真太阳时
 
-- `birthInstant` 必须是带显式 UTC 偏移、精确到秒的 ISO-8601 时刻；声明的偏移必须与该瞬间的 IANA 历史时区偏移一致。夏令时重叠会要求明确选择，跳过的当地时间会被拒绝。
-- 历法事实由锁定版本的 `lunar-typescript` 生成；节气在固定的历法模型时标中转换为实际瞬间后比较，不以出生地墙钟字符串替代节气边界。
-- 真太阳时校正由经度差与锁定的 NOAA 2006 均时差模型共同计算。若民用时与真太阳时跨越日或时辰边界，界面会展示两种候选并要求选择的时标保持一致。
+- `birthInstant` 必须是带显式 UTC 偏移、精确到秒的 ISO-8601 时刻。若 \(o_{\mathrm{declared}}\) 是输入声明的偏移，\(o_{\mathrm{IANA}}(z,t)\) 是该时区在同一瞬间的历史偏移，则输入有效的必要条件是：
+
+$$
+o_{\mathrm{declared}} = o_{\mathrm{IANA}}(z,t)
+$$
+
+夏令时重叠会保留全部真实瞬间并要求用户明确选择；落入跳过区间的当地时间没有对应瞬间，因此被拒绝。
+
+- 民用时 \(t_{\mathrm{civil}}\) 由 \(t\) 在 IANA 时区 \(z\) 中格式化得到。真太阳时校正使用出生经度 \(\lambda\)、该瞬间的时区偏移 \(o\)（小时）与 NOAA 2006 均时差 \(E(t)\)：
+
+$$
+\begin{aligned}
+\Delta_{\lambda} &= 4\bigl(\lambda - 15o\bigr) \\[-2pt]
+\Delta_{\mathrm{solar}} &= \Delta_{\lambda} + E(t) \\
+t_{\mathrm{solar}} &= t_{\mathrm{civil}} + \Delta_{\mathrm{solar}}
+\end{aligned}
+$$
+
+所有校正量以分钟计。若 \(t_{\mathrm{civil}}\) 与 \(t_{\mathrm{solar}}\) 让日期或时辰发生变化，两个候选都会展示；同一快照只能选择其中一个时标。
+
+- 历法事实由锁定的 `lunar-typescript@1.8.6` 生成。节气边界不是按出生地墙钟文本比较，而是在固定历法模型时标中换算为真实瞬间，再和 \(t\) 比较：
+
+$$
+\mathrm{yearPillar},\ \mathrm{monthPillar}
+= \mathrm{PillarsAtInstant}\bigl(t,\ \{\tau_j\}_{j=1}^{24}\bigr)
+$$
+
+这使立春、节气交界、闰月和跨时区场景具有相同的比较基准。
 
 ### 2. 命盘、裁决与可追溯证据
 
-唯一的引擎组合入口是 [`calculateBaziSnapshot`](./src/domain/bazi/snapshot.ts)。它返回所选时标下的命盘、旺衰、格局、喜忌、关系裁决、大运、领域结论与时间序列。
+唯一的引擎组合入口是 [`calculateBaziSnapshot`](./src/domain/bazi/snapshot.ts)。在用户选定的时标 \(s\in\{\mathrm{civil},\mathrm{trueSolar}\}\) 下，命盘和裁决的关系可概括为：
+
+$$
+\begin{aligned}
+\mathcal{N} &= \mathrm{NatalChart}\bigl(t_s, t\bigr) \\
+\mathcal{R} &= \mathrm{AdjudicateRelations}(\mathcal{N}) \\
+\mathcal{Q} &= \mathrm{AssessQi}(\mathcal{N},\mathcal{R}) \\
+\mathcal{J} &= \mathrm{ResolveFavorable}\!\left(
+  \mathcal{N},\mathcal{Q},\mathrm{AssessStructure}(\mathcal{N},\mathcal{Q},\mathcal{R}),\mathcal{R}
+\right) \\
+\mathcal{L} &= \mathrm{LuckCycles}(t,z,g)
+\end{aligned}
+$$
+
+\(\mathcal{N}\) 包含四柱及其衍生事实，\(\mathcal{R}\) 是关系裁决，\(\mathcal{Q}\) 是旺衰证据，\(\mathcal{J}\) 是格局与喜忌裁决，\(\mathcal{L}\) 是大运。引擎再把这些事实和所选 \(R,d,q\) 生成领域结论与时间序列。
 
 规则目录位于 [`src/domain/bazi`](./src/domain/bazi)：每个结论携带稳定的规则标识、来源层、涉及对象、极性、数值方向、严重度与相关领域。显式合局会被标为 `formed`、`blocked`、`contested`、`untransformed` 或 `broken`；半合与拱合不会被伪装成已化的三合。
 
-`algorithmVersion` 由冻结规则目录的指纹以及天文、历法模型修订共同构成。选定时标、序列范围、粒度与计算输入共同形成快照身份；姓名、地点名和纬度仅是展示元数据，不参与确定性计算或哈希。
+`algorithmVersion` 由冻结规则目录的指纹以及天文、历法模型修订共同构成。快照键截取 SHA-256 的前 16 个十六进制字符：
+
+$$
+k = \operatorname{prefix}_{16}\!\left(
+\operatorname{SHA256}\!\left(
+\operatorname{serialize}(X^{\ast},R,d,q,\mathrm{algorithmVersion})
+\right)\right)
+$$
+
+\(X^{\ast}\) 仅保留计算输入；姓名、地点名和纬度仅作展示元数据，因此不进入确定性计算或快照键。
 
 ### 3. 趋势指数与 K 线
 
-趋势指数不是价格、概率或现实结果预测。对于每个活跃来源层，先计算：
+趋势指数不是价格、概率或现实结果预测。设 \(\ell\) 为一个活跃来源层，\(h\) 为该层的一条规则命中，\(v_h\in\{-1,0,1\}\) 为规则方向，\(a_h\) 为严重度，则该层的支持与压力为：
 
-`(支持 - 压力) / (支持 + 压力 + 4)`
+$$
+\begin{aligned}
+P_{\ell} &= \sum_{h\in\ell,\ v_h=+1} a_h \\
+N_{\ell} &= \sum_{h\in\ell,\ v_h=-1} a_h \\
+b_{\ell} &= \frac{P_{\ell}-N_{\ell}}{P_{\ell}+N_{\ell}+4}
+\end{aligned}
+$$
 
-再按固定层权重得到加权均值 `B`，最终指数为 `round(50 + 30 × B)`，并限制在 0–100。固定层权重避免同一层大量重复关系机械地把指数推至端点。
+分母中的常数 \(4\) 是阻尼项。对于有方向性证据的活跃层集合 \(A\)，以固定权重 \(w_{\ell}\) 汇总：
 
-时辰是包含准确瞬间与规则证据的原子点，不伪造 OHLC。日 K 线聚合该民用日的全部真实时辰点，月 K 线聚合日 K 线，年 K 线聚合月 K 线；每根聚合 K 线保留收盘瞬间及对应的岁运流转信息。
+$$
+\begin{aligned}
+B &= \frac{\sum_{\ell\in A}w_{\ell}b_{\ell}}{\sum_{\ell\in A}w_{\ell}} \\
+I &= \operatorname{clamp}_{[0,100]}\!\left(\operatorname{round}(50+30B)\right)
+\end{aligned}
+$$
+
+固定层权重限制每个时间层的影响上限，阻止同层的大量重复关系机械地把指数推至端点。总览指数直接使用总规则证据；它不是其他领域分数的平均值。
+
+时辰是包含准确瞬间与规则证据的原子点，不伪造 OHLC。对于一个聚合周期 \(G\)，其有序低粒度观测值为 \(x_1,\dots,x_n\)，则 K 线严格由这些真实值构成：
+
+$$
+\begin{aligned}
+O_G &= x_1 & C_G &= x_n \\
+H_G &= \max_{1\leq i\leq n}x_i & L_G &= \min_{1\leq i\leq n}x_i
+\end{aligned}
+$$
+
+日 K 线的 \(x_i\) 是该民用日的全部真实时辰点；月 K 线的 \(x_i\) 是日 K 线，年 K 线的 \(x_i\) 是月 K 线。因此每个聚合周期必然满足：
+
+$$
+L_G \leq O_G \leq H_G,
+\qquad
+L_G \leq C_G \leq H_G
+$$
+
+每根聚合 K 线保留收盘瞬间及对应的岁运流转信息。图中的两个派生指标同样由领域层计算，而非组件估算：
+
+$$
+\begin{aligned}
+\mathrm{TrendCenter}_t &= \frac{1}{|W_t|}\sum_{i\in W_t}V_i,
+&& W_t=\{\max(1,t-4),\dots,t\} \\
+\mathrm{Intensity}_t &=
+\begin{cases}
+0, & t=1 \\
+|V_t-V_{t-1}|, & t>1
+\end{cases}
+\end{aligned}
+$$
+
+其中 \(V_t\) 是时辰点的值或 K 线收盘值。`TrendCenter` 只使用当期及之前最多五个周期，绝不读取未来数据。
 
 ## 古典文献：来源、实现与边界
 
